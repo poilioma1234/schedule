@@ -1,0 +1,78 @@
+@model IEnumerable<schedule.ViewModels.AdminUserViewModel>
+
+@{
+    ViewData["Title"] = "Admin";
+}
+
+<div class="page-heading">
+    <h1>Quản lý người dùng</h1>
+    <input id="userSearch" class="form-control w-auto" placeholder="Tìm email" />
+</div>
+
+<div class="table-responsive">
+    <table class="table align-middle table-hover" id="usersTable">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td>@user.Email</td>
+                    <td>@user.Roles</td>
+                    <td>
+                        @if (user.IsLocked)
+                        {
+                            <span class="badge bg-danger">Đã khóa</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Hoạt động</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-info" asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id">Xem lịch</a>
+                        <form asp-action="MakeAdmin" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <button class="btn btn-sm btn-outline-warning" type="submit">Gán Admin</button>
+                        </form>
+                        @if (user.IsLocked)
+                        {
+                            <form asp-action="Unlock" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <button class="btn btn-sm btn-outline-success" type="submit">Mở khóa</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="Lock" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">Khóa</button>
+                            </form>
+                        }
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa người dùng này?');">
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('userSearch').addEventListener('input', function () {
+            const keyword = this.value.toLowerCase();
+            document.querySelectorAll('#usersTable tbody tr').forEach(row => {
+                row.style.display = row.cells[0].textContent.toLowerCase().includes(keyword) ? '' : 'none';
+            });
+        });
+    </script>
+}

@@ -1,0 +1,28 @@
+@model schedule.Models.ScheduleItem
+
+@{
+    ViewData["Title"] = "Xóa lịch";
+}
+
+<div class="page-heading">
+    <h1>Xóa lịch</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="form-card">
+    <p class="mb-3">Bạn có chắc muốn xóa lịch này?</p>
+    <dl class="row">
+        <dt class="col-sm-3">Tiêu đề</dt>
+        <dd class="col-sm-9">@Model.Title</dd>
+        <dt class="col-sm-3">Thời gian</dt>
+        <dd class="col-sm-9">@Model.StartTime.ToString("dd/MM/yyyy HH:mm") - @Model.EndTime.ToString("dd/MM/yyyy HH:mm")</dd>
+        <dt class="col-sm-3">Địa điểm</dt>
+        <dd class="col-sm-9">@Model.Location</dd>
+    </dl>
+
+    <form asp-action="DeleteConfirmed" method="post">
+        <input type="hidden" name="id" value="@Model.Id" />
+        <button type="submit" class="btn btn-danger">Xóa</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Hủy</a>
+    </form>
+</div>

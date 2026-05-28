@@ -1,0 +1,47 @@
+@model schedule.Models.ScheduleItem
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <label asp-for="Title" class="form-label">Tiêu đề</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="ReminderMinutes" class="form-label">Nhắc trước bao nhiêu phút</label>
+        <input asp-for="ReminderMinutes" type="number" min="0" max="10080" class="form-control" />
+        <span asp-validation-for="ReminderMinutes" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="StartTime" class="form-label">Bắt đầu</label>
+        <input asp-for="StartTime" type="datetime-local" value="@Model.StartTime.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
+        <span asp-validation-for="StartTime" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="EndTime" class="form-label">Kết thúc</label>
+        <input asp-for="EndTime" type="datetime-local" value="@Model.EndTime.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
+        <span asp-validation-for="EndTime" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Location" class="form-label">Địa điểm</label>
+        <input asp-for="Location" class="form-control" />
+        <span asp-validation-for="Location" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="ReceiverEmail" class="form-label">Email nhận nhắc lịch</label>
+        <input asp-for="ReceiverEmail" type="email" class="form-control" />
+        <span asp-validation-for="ReceiverEmail" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Description" class="form-label">Mô tả</label>
+        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <div class="form-check">
+            <input asp-for="IsImportant" class="form-check-input" />
+            <label asp-for="IsImportant" class="form-check-label">Đánh dấu lịch quan trọng</label>
+        </div>
+    </div>
+</div>

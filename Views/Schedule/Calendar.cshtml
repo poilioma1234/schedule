@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "Calendar";
+    var viewingUserId = ViewBag.ViewingUserId as string ?? "";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<div class="page-heading">
+    <h1>Calendar</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-userId="@viewingUserId">Danh sách</a>
+</div>
+
+<div id="calendar" class="calendar-panel"></div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarEl = document.getElementById('calendar');
+            const userId = '@viewingUserId';
+            const eventUrl = userId ? `/Schedule/GetEvents?userId=${userId}` : '/Schedule/GetEvents';
+
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 'auto',
+                locale: 'vi',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Hôm nay',
+                    month: 'Tháng',
+                    week: 'Tuần',
+                    day: 'Ngày'
+                },
+                events: eventUrl,
+                dateClick: function (info) {
+                    window.location.href = `/Schedule/Create?date=${info.dateStr}`;
+                },
+                eventClick: function (info) {
+                    window.location.href = `/Schedule/Edit/${info.event.id}`;
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
+}

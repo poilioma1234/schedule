@@ -1,0 +1,132 @@
+@model schedule.ViewModels.HomeDashboardViewModel
+
+@{
+    ViewData["Title"] = "Trang chủ";
+}
+
+@if (Model.IsAuthenticated)
+{
+    <section class="dashboard-hero">
+        <div>
+            <p class="eyebrow">Xin chào, @Model.UserEmail</p>
+            <h1>Hôm nay mình sắp xếp gì?</h1>
+            <p class="hero-copy">
+                Xem nhanh lịch đang diễn ra, lịch sắp tới, thêm công việc mới hoặc mở calendar để kiểm soát thời gian trong ngày.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-light btn-lg" asp-controller="Schedule" asp-action="Create">Thêm lịch mới</a>
+                <a class="btn btn-outline-light btn-lg" asp-controller="Schedule" asp-action="Calendar">Xem calendar</a>
+            </div>
+        </div>
+        <div class="today-focus">
+            <span>Lịch hôm nay</span>
+            <strong>@Model.TodaySchedules</strong>
+            <p>@(Model.TodaySchedules == 0 ? "Chưa có lịch nào trong hôm nay." : "Bạn có lịch cần theo dõi trong hôm nay.")</p>
+        </div>
+    </section>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <span>Tổng lịch</span>
+            <strong>@Model.TotalSchedules</strong>
+        </div>
+        <div class="stat-card">
+            <span>Đang/sắp diễn ra</span>
+            <strong>@Model.UpcomingSchedules</strong>
+        </div>
+        <div class="stat-card">
+            <span>Đang diễn ra</span>
+            <strong>@Model.ActiveSchedules</strong>
+        </div>
+        <div class="stat-card">
+            <span>Lịch quan trọng</span>
+            <strong>@Model.ImportantSchedules</strong>
+        </div>
+    </section>
+
+    <section class="content-split">
+        <div class="panel-section">
+            <div class="section-title">
+                <h2>Lịch cần chú ý</h2>
+                <a asp-controller="Schedule" asp-action="Index">Xem tất cả</a>
+            </div>
+
+            @if (Model.UpcomingItems.Any())
+            {
+                <div class="upcoming-list">
+                    @foreach (var item in Model.UpcomingItems)
+                    {
+                        var isOngoing = item.StartTime <= DateTime.Now && item.EndTime >= DateTime.Now;
+                        <a class="upcoming-item" asp-controller="Schedule" asp-action="Edit" asp-route-id="@item.Id">
+                            <div>
+                                <strong>@item.Title</strong>
+                                <span>@item.Location</span>
+                            </div>
+                            <div class="upcoming-time">
+                                <em>@(isOngoing ? "Đang diễn ra" : "Sắp tới")</em>
+                                <time>@item.StartTime.ToString("dd/MM HH:mm")</time>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <h3>Không có lịch cần chú ý</h3>
+                    <p>Bạn có thể thêm lịch học, deadline hoặc công việc mới để hệ thống nhắc đúng lúc.</p>
+                    <a class="btn btn-primary" asp-controller="Schedule" asp-action="Create">Thêm lịch đầu tiên</a>
+                </div>
+            }
+        </div>
+
+        <div class="panel-section guide-panel">
+            <h2>Luồng sử dụng nhanh</h2>
+            <ol>
+                <li>Thêm lịch với thời gian bắt đầu và kết thúc.</li>
+                <li>Đánh dấu quan trọng nếu lịch cần ưu tiên.</li>
+                <li>Nhập email nhận nhắc để hệ thống gửi thông báo.</li>
+                <li>Xem lại bằng danh sách, calendar hoặc xuất PDF.</li>
+            </ol>
+            <a class="btn btn-outline-primary w-100 mt-2" asp-controller="Schedule" asp-action="ExportPdf">Xuất PDF</a>
+        </div>
+    </section>
+}
+else
+{
+    <section class="home-panel py-5">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <p class="text-primary fw-semibold mb-2">Quản lý thời gian cá nhân</p>
+                <h1 class="display-5 fw-bold">Theo dõi lịch học, deadline và công việc trong một nơi.</h1>
+                <p class="lead text-muted mt-3">
+                    Schedule Manager giúp bạn tạo lịch, xem theo calendar, nhận email nhắc việc và xuất lịch ra PDF.
+                </p>
+                <div class="d-flex gap-2 mt-4 flex-wrap">
+                    <a class="btn btn-primary btn-lg" asp-area="Identity" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-outline-secondary btn-lg" asp-area="Identity" asp-page="/Account/Register">Tạo tài khoản</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="summary-panel">
+                    <div class="summary-row">
+                        <span>Quản lý lịch cá nhân</span>
+                        <strong>Rõ ràng</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Nhắc lịch qua email</span>
+                        <strong>Tiện lợi</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Xem theo calendar</span>
+                        <strong>Trực quan</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Xuất PDF</span>
+                        <strong>Nhanh</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+}

@@ -1,0 +1,25 @@
+@model schedule.Models.ScheduleItem
+
+@{
+    ViewData["Title"] = "Sửa lịch";
+}
+
+<div class="page-heading">
+    <h1>Sửa lịch</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
+</div>
+
+<div class="form-card">
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <partial name="_Form" model="Model" />
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Cập nhật</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Hủy</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
