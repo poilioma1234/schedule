@@ -27,6 +27,10 @@ namespace schedule.Data
                 .IsUnique()
                 .HasFilter("[PublicSlug] IS NOT NULL");
 
+            builder.Entity<UserProfile>()
+                .Property(profile => profile.IsProfilePublic)
+                .HasDefaultValue(true);
+
             builder.Entity<TaskItem>()
                 .HasOne(task => task.ScheduleItem)
                 .WithMany(schedule => schedule.Tasks)

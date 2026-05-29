@@ -16,6 +16,8 @@ namespace schedule.Models
         [StringLength(90)]
         public string? PublicSlug { get; set; }
 
+        public bool IsProfilePublic { get; set; } = true;
+
         [StringLength(600)]
         public string? Bio { get; set; }
 

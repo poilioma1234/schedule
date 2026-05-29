@@ -25,6 +25,16 @@
             <span asp-validation-for="Bio" class="text-danger"></span>
         </div>
 
+        <div class="privacy-toggle">
+            <div>
+                <strong>Hiển thị profile công khai</strong>
+                <span>Cho phép người khác mở link `/Profile/user/...` và cho bạn xuất hiện trên bảng xếp hạng.</span>
+            </div>
+            <div class="form-check form-switch">
+                <input asp-for="IsProfilePublic" class="form-check-input" role="switch" />
+            </div>
+        </div>
+
         <div class="row g-3">
             <div class="col-md-6">
                 <label asp-for="AvatarFile" class="form-label">Ảnh đại diện</label>

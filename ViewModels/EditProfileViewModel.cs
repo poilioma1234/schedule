@@ -10,6 +10,8 @@ namespace schedule.ViewModels
         [StringLength(600)]
         public string? Bio { get; set; }
 
+        public bool IsProfilePublic { get; set; } = true;
+
         [Url(ErrorMessage = "Link nhạc không hợp lệ.")]
         [StringLength(500)]
         public string? MusicUrl { get; set; }

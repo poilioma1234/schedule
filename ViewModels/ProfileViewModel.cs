@@ -7,6 +7,7 @@ namespace schedule.ViewModels
         public string UserId { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public bool IsOwner { get; set; }
+        public bool IsLocked { get; set; }
         public bool IsPublicProfile { get; set; }
         public string PublicProfilePath { get; set; } = string.Empty;
         public bool ShouldAutoplayMusic { get; set; }

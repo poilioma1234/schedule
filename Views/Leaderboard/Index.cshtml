@@ -1,0 +1,114 @@
+@model schedule.ViewModels.LeaderboardViewModel
+
+@{
+    ViewData["Title"] = "Bảng xếp hạng";
+    var periodOptions = new[]
+    {
+        new { Value = "day", Label = "Ngày" },
+        new { Value = "month", Label = "Tháng" },
+        new { Value = "year", Label = "Năm" }
+    };
+}
+
+<section class="leaderboard-hero">
+    <div>
+        <p class="eyebrow">Bảng xếp hạng</p>
+        <h1>Top 3 user hoàn thành task tốt nhất</h1>
+        <p>Điểm được tính riêng theo từng mốc thời gian. Bảng tháng sẽ tự reset khi sang tháng mới.</p>
+    </div>
+    <div class="leaderboard-period-card">
+        <span>@Model.PeriodTitle</span>
+        <strong>@Model.Rows.Count</strong>
+        <small>vị trí top 3</small>
+    </div>
+</section>
+
+<div class="leaderboard-toolbar">
+    <div class="leaderboard-tabs">
+        @foreach (var option in periodOptions)
+        {
+            <a class="btn @(Model.Period == option.Value ? "btn-primary" : "btn-outline-primary")"
+               asp-action="Index"
+               asp-route-period="@option.Value"
+               asp-route-month="@Model.SelectedMonth">@option.Label</a>
+        }
+    </div>
+
+    @if (Model.Period == "month")
+    {
+        <form asp-action="Index" method="get" class="leaderboard-month-form">
+            <input type="hidden" name="period" value="month" />
+            <label for="month">Chọn tháng</label>
+            <input id="month" name="month" type="month" class="form-control" value="@Model.SelectedMonth" />
+            <button class="btn btn-primary" type="submit">Xem</button>
+        </form>
+    }
+</div>
+
+<section class="leaderboard-panel">
+    @if (Model.Rows.Any())
+    {
+        <div class="table-responsive">
+            <table class="table leaderboard-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Hạng</th>
+                        <th>Người dùng</th>
+                        <th class="text-end">Task hoàn thành</th>
+                        <th class="text-end">Điểm</th>
+                        <th class="text-end">Task khẩn cấp</th>
+                        <th class="text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        var initial = string.IsNullOrWhiteSpace(row.DisplayName)
+                            ? "U"
+                            : row.DisplayName.Substring(0, 1).ToUpper();
+                        <tr>
+                            <td>
+                                <span class="rank-badge rank-top">#@row.Rank</span>
+                            </td>
+                            <td>
+                                <div class="leaderboard-user">
+                                    <div class="leaderboard-avatar">
+                                        @if (!string.IsNullOrWhiteSpace(row.AvatarPath))
+                                        {
+                                            <img src="@row.AvatarPath" alt="Ảnh đại diện của @row.DisplayName" />
+                                        }
+                                        else
+                                        {
+                                            <span>@initial</span>
+                                        }
+                                    </div>
+                                    <div>
+                                        <strong>@row.DisplayName</strong>
+                                        <span>@row.Email</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <strong>@row.CompletedTaskCount</strong>
+                            </td>
+                            <td class="text-end">
+                                <span class="score-pill">@row.Score điểm</span>
+                            </td>
+                            <td class="text-end">@row.UrgentTaskCount</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="@row.PublicProfilePath">Xem profile</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <h3>Chưa có top 3 cho mốc này</h3>
+            <p>Chỉ user đang hoạt động, bật profile công khai và có task hoàn thành mới được tính điểm.</p>
+        </div>
+    }
+</section>

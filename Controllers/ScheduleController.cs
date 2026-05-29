@@ -99,6 +99,12 @@ namespace schedule.Controllers
                 return Forbid();
             }
 
+            if (!CanEditToday(item))
+            {
+                TempData["SuccessMessage"] = "Chỉ có lịch trong ngày hiện tại mới được sửa.";
+                return RedirectToAction(nameof(Index));
+            }
+
             return View(item);
         }
 
@@ -127,6 +133,12 @@ namespace schedule.Controllers
             if (!CanManage(existingItem))
             {
                 return Forbid();
+            }
+
+            if (!CanEditToday(existingItem))
+            {
+                TempData["SuccessMessage"] = "Chỉ có lịch trong ngày hiện tại mới được sửa.";
+                return RedirectToAction(nameof(Index));
             }
 
             var timeChanged = existingItem.StartTime != item.StartTime;
@@ -324,6 +336,11 @@ namespace schedule.Controllers
         private bool CanManage(ScheduleItem item)
         {
             return User.IsInRole("Admin") || item.CreatedByUserId == _userManager.GetUserId(User);
+        }
+
+        private static bool CanEditToday(ScheduleItem item)
+        {
+            return item.StartTime.Date == DateTime.Today;
         }
 
         private void ValidateScheduleTime(ScheduleItem item)

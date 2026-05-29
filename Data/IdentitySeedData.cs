@@ -155,6 +155,7 @@ namespace schedule.Data
                     DisplayName = sample.DisplayName,
                     PublicSlug = sample.Slug,
                     Bio = sample.Bio,
+                    IsProfilePublic = true,
                     MusicUrl = sample.MusicUrl,
                     FacebookUrl = sample.FacebookUrl,
                     YouTubeUrl = sample.YouTubeUrl,
@@ -176,6 +177,7 @@ namespace schedule.Data
             }
 
             profile.Bio = sample.Bio;
+            profile.IsProfilePublic = true;
             profile.MusicUrl = sample.MusicUrl;
             profile.FacebookUrl = sample.FacebookUrl;
             profile.YouTubeUrl = sample.YouTubeUrl;
@@ -450,7 +452,8 @@ namespace schedule.Data
                     profile = new UserProfile
                     {
                         UserId = user.Id,
-                        DisplayName = user.Email ?? user.UserName ?? "User"
+                        DisplayName = user.Email ?? user.UserName ?? "User",
+                        IsProfilePublic = true
                     };
 
                     context.UserProfiles.Add(profile);

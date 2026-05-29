@@ -68,6 +68,13 @@ namespace schedule.Controllers
                 return NotFound();
             }
 
+            var isOwner = User.Identity?.IsAuthenticated == true && _userManager.GetUserId(User) == user.Id;
+            var canViewPrivateProfile = isOwner || User.IsInRole("Admin");
+            if (!profile.IsProfilePublic && !canViewPrivateProfile)
+            {
+                return NotFound();
+            }
+
             var model = await BuildProfileViewModelAsync(user, profile, isPublicProfile: true);
             return View("Details", model);
         }
@@ -101,6 +108,7 @@ namespace schedule.Controllers
             {
                 DisplayName = profile.DisplayName,
                 Bio = profile.Bio,
+                IsProfilePublic = profile.IsProfilePublic,
                 MusicUrl = profile.MusicUrl,
                 FacebookUrl = profile.FacebookUrl,
                 YouTubeUrl = profile.YouTubeUrl,
@@ -137,6 +145,7 @@ namespace schedule.Controllers
                 ? user.Email ?? user.UserName ?? "User"
                 : model.DisplayName.Trim();
             profile.Bio = model.Bio?.Trim();
+            profile.IsProfilePublic = model.IsProfilePublic;
             profile.MusicUrl = model.MusicUrl?.Trim();
             profile.FacebookUrl = model.FacebookUrl?.Trim();
             profile.YouTubeUrl = model.YouTubeUrl?.Trim();
@@ -174,18 +183,21 @@ namespace schedule.Controllers
             var taskQuery = _context.TaskItems.Where(item => item.CreatedByUserId == user.Id);
             var now = DateTime.Now;
             var isOwner = User.Identity?.IsAuthenticated == true && _userManager.GetUserId(User) == user.Id;
+            var isLocked = IsUserLocked(user);
             var youtubeEmbedUrl = TryBuildYouTubeEmbedUrl(profile.MusicUrl);
             var tasks = await taskQuery.ToListAsync();
             var streak = ActivityStatsHelper.CalculateCompletionStreak(tasks, DateTime.Today);
+            var rankLabel = await BuildRankLabelAsync(user.Id, profile.IsProfilePublic, isLocked);
 
             return new ProfileViewModel
             {
                 UserId = user.Id,
                 Email = user.Email ?? user.UserName ?? "",
                 IsOwner = isOwner,
+                IsLocked = isLocked,
                 IsPublicProfile = isPublicProfile,
                 PublicProfilePath = Url.Action(nameof(PublicProfile), "Profile", new { slug = profile.PublicSlug }) ?? $"/Profile/user/{profile.PublicSlug}",
-                ShouldAutoplayMusic = isPublicProfile && !isOwner && !string.IsNullOrWhiteSpace(youtubeEmbedUrl),
+                ShouldAutoplayMusic = !isLocked && isPublicProfile && !isOwner && !string.IsNullOrWhiteSpace(youtubeEmbedUrl),
                 YouTubeEmbedUrl = youtubeEmbedUrl,
                 Profile = profile,
                 TotalSchedules = await scheduleQuery.CountAsync(),
@@ -198,8 +210,65 @@ namespace schedule.Controllers
                 CurrentStreakDays = streak.Current,
                 LongestStreakDays = streak.Longest,
                 CompletedTaskChart = ActivityStatsHelper.BuildCompletedTasksByDay(tasks, DateTime.Today, 30),
-                RankLabel = "Chưa có dữ liệu xếp hạng"
+                RankLabel = rankLabel
             };
+        }
+
+        private async Task<string> BuildRankLabelAsync(string userId, bool isProfilePublic, bool isLocked)
+        {
+            if (isLocked)
+            {
+                return "User bị khóa";
+            }
+
+            if (!isProfilePublic)
+            {
+                return "Không tham gia bảng xếp hạng";
+            }
+
+            var today = DateTime.Today;
+            var startDate = new DateTime(today.Year, today.Month, 1);
+            var exclusiveEndDate = startDate.AddMonths(1);
+            var users = (await _userManager.GetUsersInRoleAsync("User"))
+                .Where(user => !IsUserLocked(user))
+                .ToList();
+            var userIds = users.Select(user => user.Id).ToHashSet();
+            var publicUserIds = await _context.UserProfiles
+                .Where(profile => userIds.Contains(profile.UserId) && profile.IsProfilePublic)
+                .Select(profile => profile.UserId)
+                .ToListAsync();
+            var tasks = await _context.TaskItems
+                .Where(task =>
+                    task.CreatedByUserId != null
+                    && publicUserIds.Contains(task.CreatedByUserId)
+                    && task.Status == TaskItemStatus.Completed
+                    && task.UpdatedAt >= startDate
+                    && task.UpdatedAt < exclusiveEndDate)
+                .ToListAsync();
+
+            var rows = publicUserIds
+                .Select(id => new
+                {
+                    UserId = id,
+                    Completed = tasks.Count(task => task.CreatedByUserId == id),
+                    Score = tasks
+                        .Where(task => task.CreatedByUserId == id)
+                        .Sum(task => LeaderboardHelper.PriorityScore(task.Priority))
+                })
+                .Where(row => row.Score > 0)
+                .OrderByDescending(row => row.Score)
+                .ThenByDescending(row => row.Completed)
+                .Take(3)
+                .ToList();
+
+            var index = rows.FindIndex(row => row.UserId == userId);
+            if (index < 0)
+            {
+                return "Chưa vào top 3 tháng này";
+            }
+
+            var row = rows[index];
+            return $"#{index + 1} tháng này - {row.Score} điểm - {row.Completed} task";
         }
 
         private async Task<UserProfile> GetOrCreateProfileAsync(IdentityUser user)
@@ -220,7 +289,8 @@ namespace schedule.Controllers
             {
                 UserId = user.Id,
                 DisplayName = user.Email ?? user.UserName ?? "User",
-                PublicSlug = await CreateUniqueSlugAsync(user)
+                PublicSlug = await CreateUniqueSlugAsync(user),
+                IsProfilePublic = true
             };
 
             _context.UserProfiles.Add(profile);
@@ -339,6 +409,11 @@ namespace schedule.Controllers
             await file.CopyToAsync(stream);
 
             return "/" + Path.Combine(relativeFolder, fileName).Replace("\\", "/");
+        }
+
+        private static bool IsUserLocked(IdentityUser user)
+        {
+            return user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow;
         }
     }
 }

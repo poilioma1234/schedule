@@ -16,6 +16,14 @@
     <div class="alert alert-success">@TempData["ProfileMessage"]</div>
 }
 
+@if (Model.IsLocked)
+{
+    <div class="alert alert-danger profile-lock-alert">
+        <strong>User bị khóa</strong>
+        <span>Tài khoản này đang bị admin khóa, nên không tham gia bảng xếp hạng.</span>
+    </div>
+}
+
 <section class="profile-cover" style="@(cover != null ? $"background-image: linear-gradient(rgba(15, 23, 42, .25), rgba(15, 23, 42, .25)), url('{cover}')" : "")">
     <div class="profile-cover-content">
         <div class="profile-identity">
@@ -36,6 +44,10 @@
                 @if (Model.IsPublicProfile)
                 {
                     <small class="profile-public-url">@Model.PublicProfilePath</small>
+                }
+                @if (Model.IsOwner && !Model.Profile.IsProfilePublic)
+                {
+                    <small class="profile-public-url">Profile đang tắt công khai và không tham gia bảng xếp hạng.</small>
                 }
             </div>
         </div>

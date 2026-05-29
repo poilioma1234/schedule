@@ -92,6 +92,7 @@
             @foreach (var item in Model)
             {
                 var hasOverdueTask = item.Tasks.Any(task => task.Status != TaskItemStatus.Completed && task.Deadline < DateTime.Now);
+                var canEditToday = item.StartTime.Date == DateTime.Today;
                 <tr class="@(item.IsImportant || hasOverdueTask ? "table-danger" : "")">
                     <td>
                         <strong>@item.Title</strong>
@@ -123,7 +124,10 @@
                         }
                     </td>
                     <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@item.Id">Sửa</a>
+                        @if (canEditToday)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@item.Id">Sửa</a>
+                        }
                         <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.Id">Xóa</a>
                     </td>
                 </tr>
