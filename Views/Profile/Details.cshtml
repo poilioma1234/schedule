@@ -1,0 +1,142 @@
+@model schedule.ViewModels.ProfileViewModel
+
+@{
+    ViewData["Title"] = Model.Profile.DisplayName;
+    var avatar = string.IsNullOrWhiteSpace(Model.Profile.AvatarPath) ? null : Model.Profile.AvatarPath;
+    var cover = string.IsNullOrWhiteSpace(Model.Profile.CoverPath) ? null : Model.Profile.CoverPath;
+    var avatarLetter = string.IsNullOrWhiteSpace(Model.Profile.DisplayName)
+        ? "U"
+        : Model.Profile.DisplayName.Substring(0, 1).ToUpper();
+}
+
+@if (TempData["ProfileMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["ProfileMessage"]</div>
+}
+
+<section class="profile-cover" style="@(cover != null ? $"background-image: linear-gradient(rgba(15, 23, 42, .25), rgba(15, 23, 42, .25)), url('{cover}')" : "")">
+    <div class="profile-cover-content">
+        <div class="profile-identity">
+            <div class="profile-avatar">
+                @if (avatar != null)
+                {
+                    <img src="@avatar" alt="Ảnh đại diện của @Model.Profile.DisplayName" />
+                }
+                else
+                {
+                    <span>@avatarLetter</span>
+                }
+            </div>
+            <div>
+                <p class="eyebrow">Hồ sơ người dùng</p>
+                <h1>@Model.Profile.DisplayName</h1>
+                <p>@Model.Email</p>
+                @if (Model.IsPublicProfile)
+                {
+                    <small class="profile-public-url">@Model.PublicProfilePath</small>
+                }
+            </div>
+        </div>
+
+        @if (Model.IsOwner)
+        {
+            <div class="profile-owner-actions">
+                <a class="btn btn-light" asp-action="Edit">Chỉnh sửa hồ sơ</a>
+                <a class="btn btn-outline-light" href="@Model.PublicProfilePath">Xem trang public</a>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="profile-grid">
+    <div class="profile-main">
+        <div class="panel-section">
+            <h2>Giới thiệu</h2>
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.Bio))
+            {
+                <p class="profile-bio">@Model.Profile.Bio</p>
+            }
+            else
+            {
+                <p class="text-muted">Người dùng chưa viết giới thiệu.</p>
+            }
+        </div>
+
+        <div class="panel-section">
+            <h2>Liên kết</h2>
+            <div class="profile-links">
+                @if (!string.IsNullOrWhiteSpace(Model.Profile.FacebookUrl))
+                {
+                    <a href="@Model.Profile.FacebookUrl" target="_blank" rel="noopener">Facebook</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Profile.YouTubeUrl))
+                {
+                    <a href="@Model.Profile.YouTubeUrl" target="_blank" rel="noopener">YouTube</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Profile.TikTokUrl))
+                {
+                    <a href="@Model.Profile.TikTokUrl" target="_blank" rel="noopener">TikTok</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Profile.WebsiteUrl))
+                {
+                    <a href="@Model.Profile.WebsiteUrl" target="_blank" rel="noopener">Website</a>
+                }
+                @if (string.IsNullOrWhiteSpace(Model.Profile.FacebookUrl)
+                    && string.IsNullOrWhiteSpace(Model.Profile.YouTubeUrl)
+                    && string.IsNullOrWhiteSpace(Model.Profile.TikTokUrl)
+                    && string.IsNullOrWhiteSpace(Model.Profile.WebsiteUrl))
+                {
+                    <span class="text-muted">Chưa có liên kết công khai.</span>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Profile.MusicUrl))
+        {
+            <div class="panel-section">
+                <h2>Nhạc trong profile</h2>
+                @if (Model.ShouldAutoplayMusic && !string.IsNullOrWhiteSpace(Model.YouTubeEmbedUrl))
+                {
+                    <div class="profile-music-player">
+                        <iframe src="@Model.YouTubeEmbedUrl"
+                                title="Nhạc trong profile"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                allowfullscreen></iframe>
+                    </div>
+                }
+                else
+                {
+                    <a href="@Model.Profile.MusicUrl" target="_blank" rel="noopener">@Model.Profile.MusicUrl</a>
+                }
+            </div>
+        }
+    </div>
+
+    <aside class="profile-side">
+        <div class="profile-stat-card">
+            <span>Tổng lịch</span>
+            <strong>@Model.TotalSchedules</strong>
+        </div>
+        <div class="profile-stat-card">
+            <span>Lịch hôm nay</span>
+            <strong>@Model.TodaySchedules</strong>
+        </div>
+        <div class="profile-stat-card">
+            <span>Lịch quan trọng</span>
+            <strong>@Model.ImportantSchedules</strong>
+        </div>
+        <div class="profile-stat-card">
+            <span>Đang/sắp diễn ra</span>
+            <strong>@Model.ActiveOrUpcomingSchedules</strong>
+        </div>
+        <div class="profile-stat-card muted">
+            <span>Task hoàn thành</span>
+            <strong>@Model.CompletedTaskCount</strong>
+            <small>Sẽ cập nhật sau khi có module task.</small>
+        </div>
+        <div class="profile-stat-card muted">
+            <span>Thứ hạng</span>
+            <strong>@Model.RankLabel</strong>
+        </div>
+    </aside>
+</section>

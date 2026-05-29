@@ -129,6 +129,7 @@
                         <td class="text-end">
                             <div class="admin-actions">
                                 <a class="btn btn-sm btn-outline-info" asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id">Xem lịch</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Profile" asp-action="Details" asp-route-id="@user.Id">Hồ sơ</a>
 
                                 @if (user.IsAdmin)
                                 {

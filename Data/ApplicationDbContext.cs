@@ -11,5 +11,20 @@ namespace schedule.Data
         }
 
         public DbSet<ScheduleItem> ScheduleItems => Set<ScheduleItem>();
+        public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            builder.Entity<UserProfile>()
+                .HasIndex(profile => profile.UserId)
+                .IsUnique();
+
+            builder.Entity<UserProfile>()
+                .HasIndex(profile => profile.PublicSlug)
+                .IsUnique()
+                .HasFilter("[PublicSlug] IS NOT NULL");
+        }
     }
 }

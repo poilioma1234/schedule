@@ -6,6 +6,9 @@
     @if (SignInManager.IsSignedIn(User))
     {
         <li class="nav-item">
+            <a class="nav-link text-dark" asp-controller="Profile" asp-action="Index">Hồ sơ</a>
+        </li>
+        <li class="nav-item">
             <span class="nav-link text-dark">@User.Identity?.Name</span>
         </li>
         <li class="nav-item">

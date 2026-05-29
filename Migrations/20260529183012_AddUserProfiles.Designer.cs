@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using schedule.Data;
 
@@ -11,9 +12,11 @@ using schedule.Data;
 namespace schedule.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260529183012_AddUserProfiles")]
+    partial class AddUserProfiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -312,10 +315,6 @@ namespace schedule.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("PublicSlug")
-                        .HasMaxLength(90)
-                        .HasColumnType("nvarchar(90)");
-
                     b.Property<string>("TikTokUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -337,10 +336,6 @@ namespace schedule.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("PublicSlug")
-                        .IsUnique()
-                        .HasFilter("[PublicSlug] IS NOT NULL");
 
                     b.HasIndex("UserId")
                         .IsUnique();

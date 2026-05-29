@@ -1,0 +1,81 @@
+@model schedule.ViewModels.EditProfileViewModel
+
+@{
+    ViewData["Title"] = "Chỉnh sửa hồ sơ";
+}
+
+<div class="page-heading">
+    <h1>Chỉnh sửa hồ sơ</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index">Xem hồ sơ</a>
+</div>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data" class="profile-edit-grid">
+    <div class="form-card">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="DisplayName" class="form-label">Tên hiển thị</label>
+            <input asp-for="DisplayName" class="form-control" />
+            <span asp-validation-for="DisplayName" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Bio" class="form-label">Giới thiệu ngắn</label>
+            <textarea asp-for="Bio" class="form-control" rows="5"></textarea>
+            <span asp-validation-for="Bio" class="text-danger"></span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="AvatarFile" class="form-label">Ảnh đại diện</label>
+                <input asp-for="AvatarFile" type="file" accept="image/*" class="form-control" />
+                <span asp-validation-for="AvatarFile" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="CoverFile" class="form-label">Ảnh bìa</label>
+                <input asp-for="CoverFile" type="file" accept="image/*" class="form-control" />
+                <span asp-validation-for="CoverFile" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <h2 class="compact-heading">Liên kết cá nhân</h2>
+
+        <div class="mb-3">
+            <label asp-for="MusicUrl" class="form-label">Nhạc trong profile</label>
+            <input asp-for="MusicUrl" class="form-control" placeholder="https://..." />
+            <span asp-validation-for="MusicUrl" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="FacebookUrl" class="form-label">Facebook</label>
+            <input asp-for="FacebookUrl" class="form-control" placeholder="https://facebook.com/..." />
+            <span asp-validation-for="FacebookUrl" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="YouTubeUrl" class="form-label">YouTube</label>
+            <input asp-for="YouTubeUrl" class="form-control" placeholder="https://youtube.com/..." />
+            <span asp-validation-for="YouTubeUrl" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="TikTokUrl" class="form-label">TikTok</label>
+            <input asp-for="TikTokUrl" class="form-control" placeholder="https://tiktok.com/..." />
+            <span asp-validation-for="TikTokUrl" class="text-danger"></span>
+        </div>
+
+        <div class="mb-4">
+            <label asp-for="WebsiteUrl" class="form-label">Website</label>
+            <input asp-for="WebsiteUrl" class="form-control" placeholder="https://..." />
+            <span asp-validation-for="WebsiteUrl" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Lưu hồ sơ</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
