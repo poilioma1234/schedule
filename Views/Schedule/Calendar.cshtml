@@ -1,13 +1,20 @@
 @{
     ViewData["Title"] = "Calendar";
     var viewingUserId = ViewBag.ViewingUserId as string ?? "";
+    var isAdminOverview = User.IsInRole("Admin") && string.IsNullOrWhiteSpace(viewingUserId);
 }
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <div class="page-heading">
-    <h1>Calendar</h1>
+    <div>
+        <h1>Calendar</h1>
+        @if (isAdminOverview)
+        {
+            <p class="text-muted mb-0">Chế độ admin: chỉ hiển thị user nào có tạo lịch theo từng ngày.</p>
+        }
+    </div>
     <a class="btn btn-outline-secondary" asp-action="Index" asp-route-userId="@viewingUserId">Danh sách</a>
 </div>
 
@@ -18,12 +25,14 @@
         document.addEventListener('DOMContentLoaded', function () {
             const calendarEl = document.getElementById('calendar');
             const userId = '@viewingUserId';
+            const isAdminOverview = @Json.Serialize(isAdminOverview);
             const eventUrl = userId ? `/Schedule/GetEvents?userId=${userId}` : '/Schedule/GetEvents';
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 height: 'auto',
                 locale: 'vi',
+                displayEventTime: !isAdminOverview,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
@@ -37,10 +46,20 @@
                 },
                 events: eventUrl,
                 dateClick: function (info) {
-                    window.location.href = `/Schedule/Create?date=${info.dateStr}`;
+                    if (!isAdminOverview) {
+                        window.location.href = `/Schedule/Create?date=${info.dateStr}`;
+                    }
                 },
                 eventClick: function (info) {
-                    window.location.href = `/Schedule/Edit/${info.event.id}`;
+                    if (info.event.url) {
+                        info.jsEvent.preventDefault();
+                        window.location.href = info.event.url;
+                        return;
+                    }
+
+                    if (!isAdminOverview) {
+                        window.location.href = `/Schedule/Edit/${info.event.id}`;
+                    }
                 }
             });
 

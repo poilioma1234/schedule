@@ -1,7 +1,35 @@
 @model IEnumerable<schedule.Models.ScheduleItem>
 
+@functions {
+    private static string TimeAgo(DateTime createdAt)
+    {
+        var span = DateTime.Now - createdAt;
+
+        if (span.TotalDays >= 1)
+        {
+            var days = (int)Math.Floor(span.TotalDays);
+            return days == 1 ? "1 ngày trước" : $"{days} ngày trước";
+        }
+
+        if (span.TotalHours >= 1)
+        {
+            var hours = (int)Math.Floor(span.TotalHours);
+            return hours == 1 ? "1 giờ trước" : $"{hours} giờ trước";
+        }
+
+        if (span.TotalMinutes >= 1)
+        {
+            var minutes = (int)Math.Floor(span.TotalMinutes);
+            return minutes == 1 ? "1 phút trước" : $"{minutes} phút trước";
+        }
+
+        return "Vừa xong";
+    }
+}
+
 @{
     ViewData["Title"] = "Lịch trình";
+    var isAdminViewingUser = User.IsInRole("Admin") && ViewBag.ViewingUserEmail != null;
 }
 
 <div class="page-heading">
@@ -10,9 +38,16 @@
         <p class="text-muted mb-0">Đang xem: @ViewBag.ViewingUserEmail</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        @if (User.IsInRole("Admin"))
+        {
+            <a class="btn btn-outline-secondary" asp-controller="Admin" asp-action="Index">Quay lại Admin</a>
+        }
         <a class="btn btn-outline-primary" asp-action="Calendar" asp-route-userId="@ViewBag.ViewingUserId">Calendar</a>
         <a class="btn btn-outline-danger" asp-action="ExportPdf" asp-route-userId="@ViewBag.ViewingUserId">Xuất PDF</a>
-        <a class="btn btn-primary" asp-action="Create">Thêm lịch</a>
+        @if (!User.IsInRole("Admin") || !isAdminViewingUser)
+        {
+            <a class="btn btn-primary" asp-action="Create">Thêm lịch</a>
+        }
     </div>
 </div>
 
@@ -44,6 +79,7 @@
                 <th>Tiêu đề</th>
                 <th>Bắt đầu</th>
                 <th>Kết thúc</th>
+                <th>Ngày tạo</th>
                 <th>Địa điểm</th>
                 <th>Người tạo</th>
                 <th>Nhắc email</th>
@@ -63,6 +99,10 @@
                     </td>
                     <td>@item.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
                     <td>@item.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        <div class="text-muted small">@TimeAgo(item.CreatedAt)</div>
+                    </td>
                     <td>@item.Location</td>
                     <td>@item.CreatedByEmail</td>
                     <td>

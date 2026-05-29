@@ -195,6 +195,45 @@ namespace schedule.Controllers
         [HttpGet]
         public async Task<IActionResult> GetEvents(string? userId)
         {
+            if (User.IsInRole("Admin") && string.IsNullOrWhiteSpace(userId))
+            {
+                var items = await _context.ScheduleItems
+                    .Select(item => new
+                    {
+                        item.StartTime,
+                        item.CreatedByEmail,
+                        item.CreatedByUserId
+                    })
+                    .ToListAsync();
+
+                var adminEvents = items
+                    .GroupBy(item => new
+                    {
+                        Date = item.StartTime.Date,
+                        UserEmail = item.CreatedByEmail ?? "Không rõ user",
+                        UserId = item.CreatedByUserId
+                    })
+                    .Select(group => new
+                    {
+                        id = $"summary-{group.Key.UserId}-{group.Key.Date:yyyyMMdd}",
+                        title = group.Count() == 1
+                            ? group.Key.UserEmail
+                            : $"{group.Key.UserEmail} ({group.Count()} lịch)",
+                        start = group.Key.Date.ToString("yyyy-MM-dd"),
+                        allDay = true,
+                        color = "#0f766e",
+                        editable = false,
+                        url = Url.Action("Index", "Schedule", new
+                        {
+                            userId = group.Key.UserId,
+                            startDate = group.Key.Date.ToString("yyyy-MM-dd")
+                        })
+                    })
+                    .ToList();
+
+                return Json(adminEvents);
+            }
+
             var events = await BuildUserScheduleQuery(userId)
                 .Select(item => new
                 {

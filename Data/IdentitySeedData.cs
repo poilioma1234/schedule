@@ -37,6 +37,16 @@ namespace schedule.Data
             {
                 await userManager.AddToRoleAsync(admin, "Admin");
             }
+
+            var usersWithoutRole = userManager.Users.ToList();
+            foreach (var user in usersWithoutRole)
+            {
+                var roles = await userManager.GetRolesAsync(user);
+                if (!roles.Any() && user.Email != AdminEmail)
+                {
+                    await userManager.AddToRoleAsync(user, "User");
+                }
+            }
         }
     }
 }

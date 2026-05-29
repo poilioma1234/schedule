@@ -14,21 +14,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 4,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\appsettings.json",
-              "RelativeDocumentMoniker": "appsettings.json",
-              "ToolTip": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\appsettings.json",
-              "RelativeToolTip": "appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAqAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-05-28T17:21:46.937Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
@@ -44,6 +31,19 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\appsettings.json",
+              "RelativeDocumentMoniker": "appsettings.json",
+              "ToolTip": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\appsettings.json",
+              "RelativeToolTip": "appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-05-28T17:21:46.937Z",
+              "EditorCaption": ""
             }
           ]
         }

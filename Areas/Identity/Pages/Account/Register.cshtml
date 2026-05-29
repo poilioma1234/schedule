@@ -1,0 +1,40 @@
+@page
+@model schedule.Areas.Identity.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Đăng ký";
+}
+
+<div class="auth-shell">
+    <div class="auth-card">
+        <h1>Đăng ký tài khoản</h1>
+        <p>Tạo tài khoản để quản lý lịch trình, deadline và nhận nhắc việc qua email.</p>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Email" class="form-label">Email</label>
+                <input asp-for="Input.Email" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="form-label">Mật khẩu</label>
+                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ConfirmPassword" class="form-label">Nhập lại mật khẩu</label>
+                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Tạo tài khoản</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

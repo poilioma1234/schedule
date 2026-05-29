@@ -37,6 +37,11 @@ namespace schedule.Controllers
                 return View(model);
             }
 
+            if (User.IsInRole("Admin"))
+            {
+                return RedirectToAction("Index", "Admin");
+            }
+
             var today = DateTime.Today;
             var now = DateTime.Now;
             var query = _context.ScheduleItems.AsQueryable();

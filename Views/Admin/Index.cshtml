@@ -1,78 +1,182 @@
-@model IEnumerable<schedule.ViewModels.AdminUserViewModel>
+@model schedule.ViewModels.AdminDashboardViewModel
 
 @{
-    ViewData["Title"] = "Admin";
+    ViewData["Title"] = "Quản trị";
 }
 
-<div class="page-heading">
-    <h1>Quản lý người dùng</h1>
-    <input id="userSearch" class="form-control w-auto" placeholder="Tìm email" />
-</div>
+<section class="admin-hero">
+    <div>
+        <p class="eyebrow">Admin Dashboard</p>
+        <h1>Quản lý người dùng</h1>
+        <p>Theo dõi tài khoản, phân quyền, trạng thái khóa và lịch trình của từng user trong hệ thống.</p>
+    </div>
+    <a class="btn btn-light" asp-controller="Schedule" asp-action="Index">Xem toàn bộ lịch</a>
+</section>
 
-<div class="table-responsive">
-    <table class="table align-middle table-hover" id="usersTable">
-        <thead>
-            <tr>
-                <th>Email</th>
-                <th>Vai trò</th>
-                <th>Trạng thái</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in Model)
-            {
+@if (TempData["AdminMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["AdminMessage"]</div>
+}
+
+@if (TempData["AdminError"] != null)
+{
+    <div class="alert alert-danger">@TempData["AdminError"]</div>
+}
+
+<section class="admin-stats">
+    <div class="stat-card">
+        <span>Tổng user</span>
+        <strong>@Model.TotalUsers</strong>
+    </div>
+    <div class="stat-card">
+        <span>Đang hoạt động</span>
+        <strong>@Model.ActiveUsers</strong>
+    </div>
+    <div class="stat-card">
+        <span>Bị khóa</span>
+        <strong>@Model.LockedUsers</strong>
+    </div>
+    <div class="stat-card">
+        <span>Admin</span>
+        <strong>@Model.AdminUsers</strong>
+    </div>
+    <div class="stat-card">
+        <span>Tổng lịch</span>
+        <strong>@Model.TotalSchedules</strong>
+    </div>
+    <div class="stat-card">
+        <span>Lịch hôm nay</span>
+        <strong>@Model.TodaySchedules</strong>
+    </div>
+</section>
+
+<section class="admin-panel">
+    <form method="get" class="admin-toolbar">
+        <div>
+            <label class="form-label">Tìm user</label>
+            <input class="form-control" name="searchString" value="@Model.SearchString" placeholder="Nhập email..." />
+        </div>
+        <div>
+            <label class="form-label">Bộ lọc</label>
+            <select class="form-select" name="statusFilter">
+                <option value="all" selected="@(Model.StatusFilter == "all")">Tất cả</option>
+                <option value="user" selected="@(Model.StatusFilter == "user")">User thường</option>
+                <option value="admin" selected="@(Model.StatusFilter == "admin")">Admin</option>
+                <option value="locked" selected="@(Model.StatusFilter == "locked")">Đã khóa</option>
+            </select>
+        </div>
+        <div class="align-self-end d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Lọc</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Đặt lại</a>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table align-middle admin-table">
+            <thead>
                 <tr>
-                    <td>@user.Email</td>
-                    <td>@user.Roles</td>
-                    <td>
-                        @if (user.IsLocked)
-                        {
-                            <span class="badge bg-danger">Đã khóa</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">Hoạt động</span>
-                        }
-                    </td>
-                    <td class="text-end">
-                        <a class="btn btn-sm btn-outline-info" asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id">Xem lịch</a>
-                        <form asp-action="MakeAdmin" method="post" class="d-inline">
-                            <input type="hidden" name="id" value="@user.Id" />
-                            <button class="btn btn-sm btn-outline-warning" type="submit">Gán Admin</button>
-                        </form>
-                        @if (user.IsLocked)
-                        {
-                            <form asp-action="Unlock" method="post" class="d-inline">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                <button class="btn btn-sm btn-outline-success" type="submit">Mở khóa</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <form asp-action="Lock" method="post" class="d-inline">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                <button class="btn btn-sm btn-outline-secondary" type="submit">Khóa</button>
-                            </form>
-                        }
-                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa người dùng này?');">
-                            <input type="hidden" name="id" value="@user.Id" />
-                            <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
-                        </form>
-                    </td>
+                    <th>Người dùng</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th>Lịch</th>
+                    <th>Hoạt động</th>
+                    <th class="text-end">Hành động</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-</div>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.Users)
+                {
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <div class="avatar-fallback">@((string.IsNullOrWhiteSpace(user.Email) ? "U" : user.Email.Substring(0, 1)).ToUpper())</div>
+                                <div>
+                                    <strong>@user.Email</strong>
+                                    <span>ID: @(user.Id.Length > 8 ? user.Id.Substring(0, 8) : user.Id)</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            @if (user.IsAdmin)
+                            {
+                                <span class="badge rounded-pill bg-primary">Admin</span>
+                            }
+                            else
+                            {
+                                <span class="badge rounded-pill bg-secondary">User</span>
+                            }
+                        </td>
+                        <td>
+                            @if (user.IsLocked)
+                            {
+                                <span class="badge rounded-pill bg-danger">Đã khóa</span>
+                            }
+                            else
+                            {
+                                <span class="badge rounded-pill bg-success">Hoạt động</span>
+                            }
+                        </td>
+                        <td>
+                            <strong>@user.ScheduleCount</strong>
+                            <div class="text-muted small">Hôm nay: @user.TodayScheduleCount</div>
+                        </td>
+                        <td>
+                            <strong>@user.ActiveOrUpcomingScheduleCount</strong>
+                            <div class="text-muted small">
+                                @(user.LastScheduleAt.HasValue ? $"Lần tạo gần nhất: {user.LastScheduleAt:dd/MM/yyyy HH:mm}" : "Chưa có lịch")
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <div class="admin-actions">
+                                <a class="btn btn-sm btn-outline-info" asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id">Xem lịch</a>
 
-@section Scripts {
-    <script>
-        document.getElementById('userSearch').addEventListener('input', function () {
-            const keyword = this.value.toLowerCase();
-            document.querySelectorAll('#usersTable tbody tr').forEach(row => {
-                row.style.display = row.cells[0].textContent.toLowerCase().includes(keyword) ? '' : 'none';
-            });
-        });
-    </script>
-}
+                                @if (user.IsAdmin)
+                                {
+                                    <form asp-action="RemoveAdmin" method="post">
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        <button class="btn btn-sm btn-outline-warning" type="submit">Hạ User</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="MakeAdmin" method="post">
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        <button class="btn btn-sm btn-outline-warning" type="submit">Gán Admin</button>
+                                    </form>
+                                }
+
+                                @if (user.IsLocked)
+                                {
+                                    <form asp-action="Unlock" method="post">
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        <button class="btn btn-sm btn-outline-success" type="submit">Mở khóa</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="Lock" method="post">
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit">Khóa</button>
+                                    </form>
+                                }
+
+                                <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa user này và toàn bộ lịch của họ?');">
+                                    <input type="hidden" name="id" value="@user.Id" />
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (!Model.Users.Any())
+    {
+        <div class="empty-state mt-3">
+            <h3>Không tìm thấy user</h3>
+            <p>Thử đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.</p>
+        </div>
+    }
+</section>
