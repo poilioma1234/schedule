@@ -8,7 +8,7 @@
     <div>
         <p class="eyebrow">Admin Dashboard</p>
         <h1>Quản lý người dùng</h1>
-        <p>Theo dõi tài khoản, phân quyền, trạng thái khóa và lịch trình của từng user trong hệ thống.</p>
+        <p>Theo dõi tài khoản, phân quyền, trạng thái khóa, lịch trình và task của từng user trong hệ thống.</p>
     </div>
     <a class="btn btn-light" asp-controller="Schedule" asp-action="Index">Xem toàn bộ lịch</a>
 </section>
@@ -79,7 +79,8 @@
                     <th>Vai trò</th>
                     <th>Trạng thái</th>
                     <th>Lịch</th>
-                    <th>Hoạt động</th>
+                    <th>Lịch đang/sắp tới</th>
+                    <th>Task</th>
                     <th class="text-end">Hành động</th>
                 </tr>
             </thead>
@@ -89,7 +90,14 @@
                     <tr>
                         <td>
                             <div class="user-cell">
-                                <div class="avatar-fallback">@((string.IsNullOrWhiteSpace(user.Email) ? "U" : user.Email.Substring(0, 1)).ToUpper())</div>
+                                @if (!string.IsNullOrWhiteSpace(user.AvatarPath))
+                                {
+                                    <img class="avatar-fallback avatar-image" src="@user.AvatarPath" alt="Ảnh đại diện của @user.Email" />
+                                }
+                                else
+                                {
+                                    <div class="avatar-fallback">@((string.IsNullOrWhiteSpace(user.Email) ? "U" : user.Email.Substring(0, 1)).ToUpper())</div>
+                                }
                                 <div>
                                     <strong>@user.Email</strong>
                                     <span>ID: @(user.Id.Length > 8 ? user.Id.Substring(0, 8) : user.Id)</span>
@@ -123,8 +131,16 @@
                         <td>
                             <strong>@user.ActiveOrUpcomingScheduleCount</strong>
                             <div class="text-muted small">
-                                @(user.LastScheduleAt.HasValue ? $"Lần tạo gần nhất: {user.LastScheduleAt:dd/MM/yyyy HH:mm}" : "Chưa có lịch")
+                                @(user.LastScheduleAt.HasValue ? $"Tạo lịch gần nhất: {user.LastScheduleAt:dd/MM/yyyy HH:mm}" : "Chưa có lịch")
                             </div>
+                        </td>
+                        <td>
+                            <strong>@user.CompletedTaskCount/@user.TotalTaskCount</strong>
+                            <div class="text-muted small">Hoàn thành / tổng task</div>
+                            @if (user.OverdueTaskCount > 0)
+                            {
+                                <div class="text-danger small">Quá hạn: @user.OverdueTaskCount</div>
+                            }
                         </td>
                         <td class="text-end">
                             <div class="admin-actions">

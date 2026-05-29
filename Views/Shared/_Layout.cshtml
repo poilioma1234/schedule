@@ -28,6 +28,12 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Schedule" asp-action="Calendar">Calendar</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated == true && !User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Activity" asp-action="Index">Hoạt động</a>
+                            </li>
+                        }
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">

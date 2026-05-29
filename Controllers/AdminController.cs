@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using schedule.Data;
+using schedule.Models;
 using schedule.ViewModels;
 
 namespace schedule.Controllers
@@ -30,17 +31,26 @@ namespace schedule.Controllers
             {
                 var roles = await _userManager.GetRolesAsync(user);
                 var scheduleQuery = _context.ScheduleItems.Where(item => item.CreatedByUserId == user.Id);
+                var taskQuery = _context.TaskItems.Where(item => item.CreatedByUserId == user.Id);
+                var avatarPath = await _context.UserProfiles
+                    .Where(profile => profile.UserId == user.Id)
+                    .Select(profile => profile.AvatarPath)
+                    .FirstOrDefaultAsync();
 
                 userRows.Add(new AdminUserViewModel
                 {
                     Id = user.Id,
                     Email = user.Email ?? user.UserName ?? "",
+                    AvatarPath = avatarPath,
                     Roles = roles.Any() ? string.Join(", ", roles) : "User",
                     IsAdmin = roles.Contains("Admin"),
                     IsLocked = user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow,
                     ScheduleCount = await scheduleQuery.CountAsync(),
                     TodayScheduleCount = await scheduleQuery.CountAsync(item => item.StartTime.Date == today),
                     ActiveOrUpcomingScheduleCount = await scheduleQuery.CountAsync(item => item.EndTime >= now),
+                    TotalTaskCount = await taskQuery.CountAsync(),
+                    CompletedTaskCount = await taskQuery.CountAsync(item => item.Status == TaskItemStatus.Completed),
+                    OverdueTaskCount = await taskQuery.CountAsync(item => item.Status != TaskItemStatus.Completed && item.Deadline < now),
                     LastScheduleAt = await scheduleQuery
                         .OrderByDescending(item => item.CreatedAt)
                         .Select(item => (DateTime?)item.CreatedAt)

@@ -60,6 +60,9 @@ namespace schedule.Data
 
             await EnsureProfilesForExistingUsersAsync(context, userManager);
             await context.SaveChangesAsync();
+
+            await EnsureTemplateDataForRegularUsersAsync(context, userManager);
+            await context.SaveChangesAsync();
         }
 
         private static async Task EnsureSampleUsersAsync(ApplicationDbContext context, UserManager<IdentityUser> userManager)
@@ -318,6 +321,115 @@ namespace schedule.Data
                     });
                 }
             }
+        }
+
+        private static async Task EnsureTemplateDataForRegularUsersAsync(
+            ApplicationDbContext context,
+            UserManager<IdentityUser> userManager)
+        {
+            var users = await userManager.GetUsersInRoleAsync("User");
+            var templateStart = new DateTime(2026, 5, 8);
+            var templateEnd = new DateTime(2026, 6, 19);
+            var today = DateTime.Today;
+            var topics = new[]
+            {
+                "Ôn tập môn học",
+                "Deadline bài tập",
+                "Làm báo cáo nhóm",
+                "Chuẩn bị demo",
+                "Đọc tài liệu",
+                "Review kế hoạch",
+                "Cập nhật project",
+                "Kiểm tra tiến độ"
+            };
+            var locations = new[] { "Thư viện", "Ở nhà", "Online", "Phòng lab", "Quán cà phê", "Lớp học" };
+
+            foreach (var user in users.Where(user => user.Email != AdminEmail))
+            {
+                if (await context.ScheduleItems.AnyAsync(item =>
+                    item.CreatedByUserId == user.Id && item.Title.StartsWith("[Template]")))
+                {
+                    continue;
+                }
+
+                var seed = Math.Abs((user.Email ?? user.Id).GetHashCode());
+                var random = new Random(seed);
+
+                for (var date = templateStart.Date; date <= templateEnd.Date; date = date.AddDays(1))
+                {
+                    var topic = topics[random.Next(topics.Length)];
+                    var startHour = random.Next(8, 20);
+                    var startTime = date.AddHours(startHour).AddMinutes(random.Next(0, 2) * 30);
+                    var schedule = new ScheduleItem
+                    {
+                        Title = $"[Template] {topic} - {date:dd/MM}",
+                        Description = "Dữ liệu mẫu để kiểm tra dashboard, profile và biểu đồ hoạt động.",
+                        StartTime = startTime,
+                        EndTime = startTime.AddHours(random.Next(1, 3)),
+                        Location = locations[random.Next(locations.Length)],
+                        IsImportant = random.NextDouble() < 0.35,
+                        ReceiverEmail = user.Email,
+                        ReminderMinutes = 5,
+                        CreatedByUserId = user.Id,
+                        CreatedByEmail = user.Email,
+                        CreatedAt = date.AddDays(-random.Next(1, 5)).AddHours(9)
+                    };
+
+                    context.ScheduleItems.Add(schedule);
+
+                    var taskCount = random.Next(2, 5);
+                    for (var index = 1; index <= taskCount; index++)
+                    {
+                        var priority = (TaskPriorityLevel)random.Next(0, 4);
+                        var deadline = date.AddHours(random.Next(9, 23));
+                        var status = BuildTemplateTaskStatus(date, deadline, today, random, index);
+                        var completedAt = status == TaskItemStatus.Completed
+                            ? date.AddHours(18).AddMinutes(random.Next(0, 90))
+                            : date.AddHours(9);
+
+                        context.TaskItems.Add(new TaskItem
+                        {
+                            ScheduleItem = schedule,
+                            Title = $"[Template] Task {index}: {topic}",
+                            Description = "Task mẫu có deadline, trạng thái, màu và mức độ ưu tiên.",
+                            Deadline = deadline,
+                            Status = status,
+                            Priority = priority,
+                            Color = TaskDisplayHelper.PriorityColor(priority),
+                            AttachmentUrl = random.NextDouble() < 0.45 ? "https://example.com/template-task" : null,
+                            CreatedByUserId = user.Id,
+                            CreatedByEmail = user.Email,
+                            CreatedAt = schedule.CreatedAt,
+                            UpdatedAt = completedAt
+                        });
+                    }
+                }
+            }
+        }
+
+        private static TaskItemStatus BuildTemplateTaskStatus(
+            DateTime date,
+            DateTime deadline,
+            DateTime today,
+            Random random,
+            int taskIndex)
+        {
+            if (date.Date <= today.Date)
+            {
+                if (taskIndex == 1)
+                {
+                    return TaskItemStatus.Completed;
+                }
+
+                if (deadline < DateTime.Now && random.NextDouble() < 0.28)
+                {
+                    return TaskItemStatus.Overdue;
+                }
+
+                return random.NextDouble() < 0.7 ? TaskItemStatus.Completed : TaskItemStatus.InProgress;
+            }
+
+            return random.NextDouble() < 0.35 ? TaskItemStatus.InProgress : TaskItemStatus.NotStarted;
         }
 
         private static async Task EnsureProfilesForExistingUsersAsync(

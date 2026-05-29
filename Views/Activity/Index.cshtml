@@ -1,0 +1,172 @@
+@model schedule.ViewModels.ActivityDashboardViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Hoạt động";
+    var chartPayload = JsonSerializer.Serialize(new[]
+    {
+        new { id = "dailyTasksChart", chart = Model.DailyTasks, type = "bar" },
+        new { id = "weeklyTasksChart", chart = Model.WeeklyTasks, type = "bar" },
+        new { id = "monthlyTasksChart", chart = Model.MonthlyTasks, type = "line" },
+        new { id = "yearlyTasksChart", chart = Model.YearlyTasks, type = "bar" },
+        new { id = "completedTasksChart", chart = Model.CompletedTaskChart, type = "line" },
+        new { id = "overdueTasksChart", chart = Model.OverdueTaskChart, type = "bar" },
+        new { id = "importantSchedulesChart", chart = Model.ImportantScheduleChart, type = "line" }
+    });
+}
+
+<section class="activity-hero">
+    <div>
+        <p class="eyebrow">Hoạt động cá nhân</p>
+        <h1>Theo dõi năng suất theo thời gian</h1>
+        <p>Biểu đồ task, deadline và lịch quan trọng của @Model.UserEmail.</p>
+    </div>
+    <div class="activity-streak">
+        <span>Chuỗi hiện tại</span>
+        <strong>@Model.CurrentStreakDays</strong>
+        <p>ngày hoạt động liên tiếp</p>
+    </div>
+</section>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <span>Tổng task</span>
+        <strong>@Model.TotalTasks</strong>
+    </div>
+    <div class="stat-card">
+        <span>Task hoàn thành</span>
+        <strong>@Model.CompletedTasks</strong>
+    </div>
+    <div class="stat-card">
+        <span>Task quá hạn</span>
+        <strong>@Model.OverdueTasks</strong>
+    </div>
+    <div class="stat-card">
+        <span>Chuỗi dài nhất</span>
+        <strong>@Model.BestStreakDays</strong>
+    </div>
+</section>
+
+<section class="activity-grid">
+    <article class="chart-panel chart-panel-wide">
+        <div class="section-title">
+            <h2>Task theo ngày</h2>
+            <span>14 ngày gần nhất</span>
+        </div>
+        <div class="chart-frame"><canvas id="dailyTasksChart"></canvas></div>
+    </article>
+
+    <article class="chart-panel">
+        <div class="section-title">
+            <h2>Task theo tuần</h2>
+            <span>8 tuần</span>
+        </div>
+        <div class="chart-frame"><canvas id="weeklyTasksChart"></canvas></div>
+    </article>
+
+    <article class="chart-panel">
+        <div class="section-title">
+            <h2>Task theo tháng</h2>
+            <span>12 tháng</span>
+        </div>
+        <div class="chart-frame"><canvas id="monthlyTasksChart"></canvas></div>
+    </article>
+
+    <article class="chart-panel">
+        <div class="section-title">
+            <h2>Task theo năm</h2>
+            <span>5 năm</span>
+        </div>
+        <div class="chart-frame"><canvas id="yearlyTasksChart"></canvas></div>
+    </article>
+
+    <article class="chart-panel">
+        <div class="section-title">
+            <h2>Đã hoàn thành</h2>
+            <span>Theo ngày</span>
+        </div>
+        <div class="chart-frame"><canvas id="completedTasksChart"></canvas></div>
+    </article>
+
+    <article class="chart-panel">
+        <div class="section-title">
+            <h2>Quá hạn</h2>
+            <span>Theo deadline</span>
+        </div>
+        <div class="chart-frame"><canvas id="overdueTasksChart"></canvas></div>
+    </article>
+
+    <article class="chart-panel chart-panel-wide">
+        <div class="section-title">
+            <h2>Lịch quan trọng</h2>
+            <span>12 tháng</span>
+        </div>
+        <div class="chart-frame"><canvas id="importantSchedulesChart"></canvas></div>
+    </article>
+</section>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+        const activityCharts = @Html.Raw(chartPayload);
+
+        const baseOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    padding: 12
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        };
+
+        activityCharts.forEach((item) => {
+            const canvas = document.getElementById(item.id);
+            if (!canvas) {
+                return;
+            }
+
+            const color = item.chart.Color;
+            const isLine = item.type === 'line';
+
+            new Chart(canvas, {
+                type: item.type,
+                data: {
+                    labels: item.chart.Labels,
+                    datasets: [{
+                        label: item.chart.Title,
+                        data: item.chart.Values,
+                        borderColor: color,
+                        backgroundColor: isLine ? `${color}22` : `${color}cc`,
+                        borderWidth: 2,
+                        fill: isLine,
+                        tension: 0.35,
+                        borderRadius: isLine ? 0 : 6
+                    }]
+                },
+                options: baseOptions
+            });
+        });
+    </script>
+}

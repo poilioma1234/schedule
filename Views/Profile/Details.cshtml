@@ -1,4 +1,5 @@
 @model schedule.ViewModels.ProfileViewModel
+@using System.Text.Json
 
 @{
     ViewData["Title"] = Model.Profile.DisplayName;
@@ -7,6 +8,7 @@
     var avatarLetter = string.IsNullOrWhiteSpace(Model.Profile.DisplayName)
         ? "U"
         : Model.Profile.DisplayName.Substring(0, 1).ToUpper();
+    var completedTaskChart = JsonSerializer.Serialize(Model.CompletedTaskChart);
 }
 
 @if (TempData["ProfileMessage"] != null)
@@ -60,6 +62,31 @@
             {
                 <p class="text-muted">Người dùng chưa viết giới thiệu.</p>
             }
+        </div>
+
+        <div class="panel-section">
+            <h2>Hoạt động</h2>
+            <div class="profile-activity-summary">
+                <div>
+                    <span>Tổng task</span>
+                    <strong>@Model.TotalTasks</strong>
+                </div>
+                <div>
+                    <span>Hoàn thành</span>
+                    <strong>@Model.CompletedTaskCount</strong>
+                </div>
+                <div>
+                    <span>Chuỗi hiện tại</span>
+                    <strong>@Model.CurrentStreakDays</strong>
+                </div>
+                <div>
+                    <span>Chuỗi dài nhất</span>
+                    <strong>@Model.LongestStreakDays</strong>
+                </div>
+            </div>
+            <div class="profile-chart-frame">
+                <canvas id="profileCompletedTasksChart"></canvas>
+            </div>
         </div>
 
         <div class="panel-section">
@@ -129,10 +156,26 @@
             <span>Đang/sắp diễn ra</span>
             <strong>@Model.ActiveOrUpcomingSchedules</strong>
         </div>
+        <div class="profile-stat-card">
+            <span>Tổng task</span>
+            <strong>@Model.TotalTasks</strong>
+        </div>
         <div class="profile-stat-card muted">
             <span>Task hoàn thành</span>
             <strong>@Model.CompletedTaskCount</strong>
             <small>Tính từ các task đã đánh dấu hoàn thành.</small>
+        </div>
+        <div class="profile-stat-card muted">
+            <span>Task quá hạn</span>
+            <strong>@Model.OverdueTaskCount</strong>
+        </div>
+        <div class="profile-stat-card muted">
+            <span>Chuỗi hiện tại</span>
+            <strong>@Model.CurrentStreakDays ngày</strong>
+        </div>
+        <div class="profile-stat-card muted">
+            <span>Chuỗi dài nhất</span>
+            <strong>@Model.LongestStreakDays ngày</strong>
         </div>
         <div class="profile-stat-card muted">
             <span>Thứ hạng</span>
@@ -140,3 +183,43 @@
         </div>
     </aside>
 </section>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+        const profileCompletedTaskChart = @Html.Raw(completedTaskChart);
+        const profileCanvas = document.getElementById('profileCompletedTasksChart');
+
+        if (profileCanvas && window.Chart) {
+            new Chart(profileCanvas, {
+                type: 'line',
+                data: {
+                    labels: profileCompletedTaskChart.Labels,
+                    datasets: [{
+                        label: profileCompletedTaskChart.Title,
+                        data: profileCompletedTaskChart.Values,
+                        borderColor: profileCompletedTaskChart.Color,
+                        backgroundColor: `${profileCompletedTaskChart.Color}22`,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+}

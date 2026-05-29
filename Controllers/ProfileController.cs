@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using schedule.Data;
+using schedule.Helpers;
 using schedule.Models;
 using schedule.ViewModels;
 
@@ -174,6 +175,8 @@ namespace schedule.Controllers
             var now = DateTime.Now;
             var isOwner = User.Identity?.IsAuthenticated == true && _userManager.GetUserId(User) == user.Id;
             var youtubeEmbedUrl = TryBuildYouTubeEmbedUrl(profile.MusicUrl);
+            var tasks = await taskQuery.ToListAsync();
+            var streak = ActivityStatsHelper.CalculateCompletionStreak(tasks, DateTime.Today);
 
             return new ProfileViewModel
             {
@@ -189,7 +192,12 @@ namespace schedule.Controllers
                 TodaySchedules = await scheduleQuery.CountAsync(item => item.StartTime.Date == DateTime.Today),
                 ImportantSchedules = await scheduleQuery.CountAsync(item => item.IsImportant),
                 ActiveOrUpcomingSchedules = await scheduleQuery.CountAsync(item => item.EndTime >= now),
-                CompletedTaskCount = await taskQuery.CountAsync(item => item.Status == TaskItemStatus.Completed),
+                TotalTasks = tasks.Count,
+                CompletedTaskCount = tasks.Count(item => item.Status == TaskItemStatus.Completed),
+                OverdueTaskCount = tasks.Count(item => item.Status != TaskItemStatus.Completed && item.Deadline < now),
+                CurrentStreakDays = streak.Current,
+                LongestStreakDays = streak.Longest,
+                CompletedTaskChart = ActivityStatsHelper.BuildCompletedTasksByDay(tasks, DateTime.Today, 30),
                 RankLabel = "Chưa có dữ liệu xếp hạng"
             };
         }

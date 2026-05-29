@@ -16,7 +16,12 @@ namespace schedule.ViewModels
         public int TodaySchedules { get; set; }
         public int ImportantSchedules { get; set; }
         public int ActiveOrUpcomingSchedules { get; set; }
+        public int TotalTasks { get; set; }
         public int CompletedTaskCount { get; set; }
+        public int OverdueTaskCount { get; set; }
+        public int CurrentStreakDays { get; set; }
+        public int LongestStreakDays { get; set; }
+        public ActivityChartViewModel CompletedTaskChart { get; set; } = new();
         public string RankLabel { get; set; } = "Chưa có dữ liệu xếp hạng";
     }
 }
