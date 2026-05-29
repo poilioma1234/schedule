@@ -1,4 +1,5 @@
 @model IEnumerable<schedule.Models.ScheduleItem>
+@using schedule.Models
 
 @functions {
     private static string TimeAgo(DateTime createdAt)
@@ -81,6 +82,7 @@
                 <th>Kết thúc</th>
                 <th>Ngày tạo</th>
                 <th>Địa điểm</th>
+                <th>Task</th>
                 <th>Người tạo</th>
                 <th>Nhắc email</th>
                 <th></th>
@@ -89,7 +91,8 @@
         <tbody>
             @foreach (var item in Model)
             {
-                <tr class="@(item.IsImportant ? "table-danger" : "")">
+                var hasOverdueTask = item.Tasks.Any(task => task.Status != TaskItemStatus.Completed && task.Deadline < DateTime.Now);
+                <tr class="@(item.IsImportant || hasOverdueTask ? "table-danger" : "")">
                     <td>
                         <strong>@item.Title</strong>
                         @if (!string.IsNullOrWhiteSpace(item.Description))
@@ -104,6 +107,13 @@
                         <div class="text-muted small">@TimeAgo(item.CreatedAt)</div>
                     </td>
                     <td>@item.Location</td>
+                    <td>
+                        <strong>@item.Tasks.Count</strong>
+                        @if (hasOverdueTask)
+                        {
+                            <div class="text-danger small">Có task quá hạn</div>
+                        }
+                    </td>
                     <td>@item.CreatedByEmail</td>
                     <td>
                         @if (!string.IsNullOrWhiteSpace(item.ReceiverEmail))

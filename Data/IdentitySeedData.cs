@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using schedule.Helpers;
 using schedule.Models;
 
 namespace schedule.Data
@@ -124,6 +125,17 @@ namespace schedule.Data
             }
 
             await context.SaveChangesAsync();
+
+            foreach (var sample in samples)
+            {
+                var user = await userManager.FindByEmailAsync(sample.Email);
+                if (user != null)
+                {
+                    await EnsureSampleTasksAsync(context, user);
+                }
+            }
+
+            await context.SaveChangesAsync();
         }
 
         private static async Task EnsureSampleProfileAsync(
@@ -239,6 +251,73 @@ namespace schedule.Data
             }
 
             context.ScheduleItems.AddRange(sampleSchedules);
+        }
+
+        private static async Task EnsureSampleTasksAsync(ApplicationDbContext context, IdentityUser user)
+        {
+            if (await context.TaskItems.AnyAsync(item => item.CreatedByUserId == user.Id))
+            {
+                return;
+            }
+
+            var schedules = await context.ScheduleItems
+                .Where(item => item.CreatedByUserId == user.Id)
+                .OrderBy(item => item.StartTime)
+                .Take(4)
+                .ToListAsync();
+
+            foreach (var schedule in schedules)
+            {
+                var taskSeeds = new[]
+                {
+                    new
+                    {
+                        Title = "Chuẩn bị nội dung chính",
+                        Description = "Ghi ra các ý quan trọng cần hoàn thành trước lịch.",
+                        Deadline = schedule.StartTime.AddHours(-2),
+                        Status = schedule.StartTime < DateTime.Now ? TaskItemStatus.Completed : TaskItemStatus.InProgress,
+                        Priority = TaskPriorityLevel.High,
+                        AttachmentUrl = "https://docs.google.com"
+                    },
+                    new
+                    {
+                        Title = "Kiểm tra tài liệu đính kèm",
+                        Description = "Rà lại file, link và các ghi chú liên quan.",
+                        Deadline = schedule.StartTime.AddHours(-1),
+                        Status = schedule.StartTime < DateTime.Now ? TaskItemStatus.Completed : TaskItemStatus.NotStarted,
+                        Priority = TaskPriorityLevel.Medium,
+                        AttachmentUrl = "https://drive.google.com"
+                    },
+                    new
+                    {
+                        Title = "Chốt kết quả sau lịch",
+                        Description = "Cập nhật phần đã làm xong và việc còn lại.",
+                        Deadline = schedule.EndTime.AddHours(2),
+                        Status = schedule.EndTime < DateTime.Now ? TaskItemStatus.Overdue : TaskItemStatus.NotStarted,
+                        Priority = schedule.IsImportant ? TaskPriorityLevel.Urgent : TaskPriorityLevel.Low,
+                        AttachmentUrl = "https://example.com/task-note"
+                    }
+                };
+
+                foreach (var seed in taskSeeds)
+                {
+                    context.TaskItems.Add(new TaskItem
+                    {
+                        ScheduleItemId = schedule.Id,
+                        Title = seed.Title,
+                        Description = seed.Description,
+                        Deadline = seed.Deadline,
+                        Status = seed.Status,
+                        Priority = seed.Priority,
+                        Color = TaskDisplayHelper.PriorityColor(seed.Priority),
+                        AttachmentUrl = seed.AttachmentUrl,
+                        CreatedByUserId = user.Id,
+                        CreatedByEmail = user.Email,
+                        CreatedAt = schedule.CreatedAt,
+                        UpdatedAt = DateTime.Now
+                    });
+                }
+            }
         }
 
         private static async Task EnsureProfilesForExistingUsersAsync(

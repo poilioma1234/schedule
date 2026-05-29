@@ -1,0 +1,27 @@
+@model schedule.Models.TaskItem
+@using schedule.Helpers
+
+@{
+    ViewData["Title"] = "Xóa task";
+}
+
+<div class="page-heading">
+    <h1>Xóa task</h1>
+    <a class="btn btn-outline-secondary" asp-controller="Schedule" asp-action="Edit" asp-route-id="@Model.ScheduleItemId">Quay lại lịch</a>
+</div>
+
+<div class="form-card">
+    <p>Bạn có chắc muốn xóa task này?</p>
+    <div class="task-card mb-3" style="border-left-color:@Model.Color">
+        <div>
+            <strong>@Model.Title</strong>
+            <div class="text-muted small">@Model.Deadline.ToString("dd/MM/yyyy HH:mm")</div>
+        </div>
+        <span class="task-badge">@TaskDisplayHelper.StatusText(TaskDisplayHelper.EffectiveStatus(Model, DateTime.Now))</span>
+    </div>
+
+    <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
+        <button type="submit" class="btn btn-danger">Xóa task</button>
+        <a class="btn btn-outline-secondary" asp-controller="Schedule" asp-action="Edit" asp-route-id="@Model.ScheduleItemId">Hủy</a>
+    </form>
+</div>

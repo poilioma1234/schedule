@@ -1,4 +1,6 @@
 @model schedule.ViewModels.HomeDashboardViewModel
+@using schedule.Helpers
+@using schedule.Models
 
 @{
     ViewData["Title"] = "Trang chủ";
@@ -11,7 +13,7 @@
             <p class="eyebrow">Xin chào, @Model.UserEmail</p>
             <h1>Hôm nay mình sắp xếp gì?</h1>
             <p class="hero-copy">
-                Xem nhanh lịch đang diễn ra, lịch sắp tới, thêm công việc mới hoặc mở calendar để kiểm soát thời gian trong ngày.
+                Xem nhanh lịch, task hôm nay, task quá hạn và mở calendar để kiểm soát thời gian trong ngày.
             </p>
             <div class="hero-actions">
                 <a class="btn btn-light btn-lg" asp-controller="Schedule" asp-action="Create">Thêm lịch mới</a>
@@ -19,9 +21,9 @@
             </div>
         </div>
         <div class="today-focus">
-            <span>Lịch hôm nay</span>
-            <strong>@Model.TodaySchedules</strong>
-            <p>@(Model.TodaySchedules == 0 ? "Chưa có lịch nào trong hôm nay." : "Bạn có lịch cần theo dõi trong hôm nay.")</p>
+            <span>Task hôm nay</span>
+            <strong>@Model.TodayTaskCount</strong>
+            <p>@(Model.OverdueTaskCount > 0 ? $"Bạn có {Model.OverdueTaskCount} task quá hạn cần xử lý." : "Không có task quá hạn.")</p>
         </div>
     </section>
 
@@ -31,16 +33,99 @@
             <strong>@Model.TotalSchedules</strong>
         </div>
         <div class="stat-card">
-            <span>Đang/sắp diễn ra</span>
-            <strong>@Model.UpcomingSchedules</strong>
+            <span>Task hôm nay</span>
+            <strong>@Model.TodayTaskCount</strong>
         </div>
         <div class="stat-card">
-            <span>Đang diễn ra</span>
-            <strong>@Model.ActiveSchedules</strong>
+            <span>Task quá hạn</span>
+            <strong>@Model.OverdueTaskCount</strong>
         </div>
         <div class="stat-card">
             <span>Lịch quan trọng</span>
             <strong>@Model.ImportantSchedules</strong>
+        </div>
+    </section>
+
+    <section class="content-split">
+        <div class="panel-section">
+            <div class="section-title">
+                <h2>Task hôm nay</h2>
+                <a asp-controller="Schedule" asp-action="Index">Xem lịch</a>
+            </div>
+
+            @if (Model.TodayTasks.Any())
+            {
+                <div class="task-list compact">
+                    @foreach (var task in Model.TodayTasks)
+                    {
+                        var effectiveStatus = TaskDisplayHelper.EffectiveStatus(task, DateTime.Now);
+                        <a class="task-card task-link @(effectiveStatus == TaskItemStatus.Overdue ? "is-overdue" : "")"
+                           style="border-left-color:@task.Color"
+                           asp-controller="Schedule"
+                           asp-action="Edit"
+                           asp-route-id="@task.ScheduleItemId">
+                            <div>
+                                <div class="task-title-row">
+                                    <strong>@task.Title</strong>
+                                    <span class="task-badge">@TaskDisplayHelper.StatusText(effectiveStatus)</span>
+                                </div>
+                                <div class="task-meta">
+                                    <span>@task.Deadline.ToString("HH:mm")</span>
+                                    <span>@TaskDisplayHelper.PriorityText(task.Priority)</span>
+                                    <span>@task.ScheduleItem?.Title</span>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state compact">
+                    <h3>Hôm nay chưa có task</h3>
+                    <p>Mở một lịch và thêm task để dashboard theo dõi deadline trong ngày.</p>
+                    <a class="btn btn-primary" asp-controller="Schedule" asp-action="Create">Thêm lịch đầu tiên</a>
+                </div>
+            }
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">
+                <h2>Task quá hạn</h2>
+                <span class="text-danger">@Model.OverdueTaskCount</span>
+            </div>
+
+            @if (Model.OverdueTasks.Any())
+            {
+                <div class="task-list compact">
+                    @foreach (var task in Model.OverdueTasks)
+                    {
+                        <a class="task-card task-link is-overdue"
+                           style="border-left-color:@task.Color"
+                           asp-controller="Schedule"
+                           asp-action="Edit"
+                           asp-route-id="@task.ScheduleItemId">
+                            <div>
+                                <div class="task-title-row">
+                                    <strong>@task.Title</strong>
+                                    <span class="task-badge">Quá hạn</span>
+                                </div>
+                                <div class="task-meta">
+                                    <span>@task.Deadline.ToString("dd/MM HH:mm")</span>
+                                    <span>@TaskDisplayHelper.PriorityText(task.Priority)</span>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state compact">
+                    <h3>Không có task quá hạn</h3>
+                    <p>Ổn đó. Những task trễ deadline sẽ xuất hiện ở đây.</p>
+                </div>
+            }
         </div>
     </section>
 
@@ -72,10 +157,9 @@
             }
             else
             {
-                <div class="empty-state">
+                <div class="empty-state compact">
                     <h3>Không có lịch cần chú ý</h3>
                     <p>Bạn có thể thêm lịch học, deadline hoặc công việc mới để hệ thống nhắc đúng lúc.</p>
-                    <a class="btn btn-primary" asp-controller="Schedule" asp-action="Create">Thêm lịch đầu tiên</a>
                 </div>
             }
         </div>
@@ -83,10 +167,10 @@
         <div class="panel-section guide-panel">
             <h2>Luồng sử dụng nhanh</h2>
             <ol>
-                <li>Thêm lịch với thời gian bắt đầu và kết thúc.</li>
-                <li>Đánh dấu quan trọng nếu lịch cần ưu tiên.</li>
-                <li>Nhập email nhận nhắc để hệ thống gửi thông báo.</li>
-                <li>Xem lại bằng danh sách, calendar hoặc xuất PDF.</li>
+                <li>Tạo lịch như một nhóm công việc lớn.</li>
+                <li>Vào lịch đó và thêm các task/deadline nhỏ.</li>
+                <li>Chọn mức ưu tiên để calendar đổi màu trực quan.</li>
+                <li>Theo dõi task hôm nay và task quá hạn ở dashboard.</li>
             </ol>
             <a class="btn btn-outline-primary w-100 mt-2" asp-controller="Schedule" asp-action="ExportPdf">Xuất PDF</a>
         </div>
@@ -100,7 +184,7 @@ else
                 <p class="text-primary fw-semibold mb-2">Quản lý thời gian cá nhân</p>
                 <h1 class="display-5 fw-bold">Theo dõi lịch học, deadline và công việc trong một nơi.</h1>
                 <p class="lead text-muted mt-3">
-                    Schedule Manager giúp bạn tạo lịch, xem theo calendar, nhận email nhắc việc và xuất lịch ra PDF.
+                    Schedule Manager giúp bạn tạo lịch, chia lịch thành task, xem calendar, nhận email nhắc việc và xuất lịch ra PDF.
                 </p>
                 <div class="d-flex gap-2 mt-4 flex-wrap">
                     <a class="btn btn-primary btn-lg" asp-area="Identity" asp-page="/Account/Login">Đăng nhập</a>
@@ -114,16 +198,16 @@ else
                         <strong>Rõ ràng</strong>
                     </div>
                     <div class="summary-row">
-                        <span>Nhắc lịch qua email</span>
-                        <strong>Tiện lợi</strong>
+                        <span>Task trong từng lịch</span>
+                        <strong>Chi tiết</strong>
                     </div>
                     <div class="summary-row">
                         <span>Xem theo calendar</span>
                         <strong>Trực quan</strong>
                     </div>
                     <div class="summary-row">
-                        <span>Xuất PDF</span>
-                        <strong>Nhanh</strong>
+                        <span>Nhắc lịch qua email</span>
+                        <strong>Tiện lợi</strong>
                     </div>
                 </div>
             </div>

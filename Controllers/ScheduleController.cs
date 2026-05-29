@@ -41,6 +41,7 @@ namespace schedule.Controllers
             ViewBag.ViewingUserEmail = await GetViewingUserEmailAsync(userId);
 
             var items = await query
+                .Include(item => item.Tasks)
                 .OrderBy(item => item.StartTime)
                 .ToListAsync();
 
@@ -85,7 +86,9 @@ namespace schedule.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            var item = await _context.ScheduleItems.FindAsync(id);
+            var item = await _context.ScheduleItems
+                .Include(schedule => schedule.Tasks.OrderBy(task => task.Deadline))
+                .FirstOrDefaultAsync(schedule => schedule.Id == id);
             if (item == null)
             {
                 return NotFound();
@@ -234,16 +237,40 @@ namespace schedule.Controllers
                 return Json(adminEvents);
             }
 
-            var events = await BuildUserScheduleQuery(userId)
+            var schedules = await BuildUserScheduleQuery(userId)
+                .Include(item => item.Tasks)
                 .Select(item => new
                 {
                     id = item.Id,
                     title = item.Title,
                     start = item.StartTime.ToString("s"),
                     end = item.EndTime.ToString("s"),
-                    color = item.IsImportant ? "#dc3545" : "#0d6efd"
+                    isImportant = item.IsImportant,
+                    tasks = item.Tasks.Select(task => new
+                    {
+                        task.Priority,
+                        task.Color
+                    })
                 })
                 .ToListAsync();
+
+            var events = schedules.Select(item =>
+            {
+                var highestPriority = item.tasks
+                    .OrderByDescending(task => task.Priority)
+                    .FirstOrDefault();
+
+                return new
+                {
+                    item.id,
+                    item.title,
+                    item.start,
+                    item.end,
+                    color = highestPriority != null
+                        ? highestPriority.Color
+                        : item.isImportant ? "#dc3545" : "#0d6efd"
+                };
+            });
 
             return Json(events);
         }

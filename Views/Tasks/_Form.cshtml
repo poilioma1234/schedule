@@ -1,0 +1,72 @@
+@model schedule.Models.TaskItem
+@using schedule.Helpers
+@using schedule.Models
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<input type="hidden" asp-for="ScheduleItemId" />
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <label asp-for="Title" class="form-label">Tiêu đề task</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Deadline" class="form-label">Deadline</label>
+        <input asp-for="Deadline" type="datetime-local" value="@Model.Deadline.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
+        <span asp-validation-for="Deadline" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Status" class="form-label">Trạng thái</label>
+        <select asp-for="Status" class="form-select">
+            <option value="@TaskItemStatus.NotStarted">@TaskDisplayHelper.StatusText(TaskItemStatus.NotStarted)</option>
+            <option value="@TaskItemStatus.InProgress">@TaskDisplayHelper.StatusText(TaskItemStatus.InProgress)</option>
+            <option value="@TaskItemStatus.Completed">@TaskDisplayHelper.StatusText(TaskItemStatus.Completed)</option>
+            <option value="@TaskItemStatus.Overdue">@TaskDisplayHelper.StatusText(TaskItemStatus.Overdue)</option>
+        </select>
+        <span asp-validation-for="Status" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Priority" class="form-label">Mức độ ưu tiên</label>
+        <select asp-for="Priority" class="form-select task-priority-select">
+            <option value="@TaskPriorityLevel.Low" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Low)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Low)</option>
+            <option value="@TaskPriorityLevel.Medium" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Medium)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Medium)</option>
+            <option value="@TaskPriorityLevel.High" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.High)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.High)</option>
+            <option value="@TaskPriorityLevel.Urgent" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Urgent)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Urgent)</option>
+        </select>
+        <span asp-validation-for="Priority" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Color" class="form-label">Màu hiển thị</label>
+        <input asp-for="Color" type="color" class="form-control form-control-color task-color-input" />
+        <span asp-validation-for="Color" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="AttachmentUrl" class="form-label">Link đính kèm</label>
+        <input asp-for="AttachmentUrl" class="form-control" placeholder="https://..." />
+        <span asp-validation-for="AttachmentUrl" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Description" class="form-label">Mô tả</label>
+        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.task-priority-select').forEach((select) => {
+        const form = select.closest('form');
+        const colorInput = form?.querySelector('.task-color-input');
+        if (!colorInput) {
+            return;
+        }
+
+        select.addEventListener('change', () => {
+            const option = select.options[select.selectedIndex];
+            const color = option?.dataset?.color;
+            if (color) {
+                colorInput.value = color;
+            }
+        });
+    });
+</script>

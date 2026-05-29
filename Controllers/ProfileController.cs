@@ -170,6 +170,7 @@ namespace schedule.Controllers
             bool isPublicProfile)
         {
             var scheduleQuery = _context.ScheduleItems.Where(item => item.CreatedByUserId == user.Id);
+            var taskQuery = _context.TaskItems.Where(item => item.CreatedByUserId == user.Id);
             var now = DateTime.Now;
             var isOwner = User.Identity?.IsAuthenticated == true && _userManager.GetUserId(User) == user.Id;
             var youtubeEmbedUrl = TryBuildYouTubeEmbedUrl(profile.MusicUrl);
@@ -188,7 +189,7 @@ namespace schedule.Controllers
                 TodaySchedules = await scheduleQuery.CountAsync(item => item.StartTime.Date == DateTime.Today),
                 ImportantSchedules = await scheduleQuery.CountAsync(item => item.IsImportant),
                 ActiveOrUpcomingSchedules = await scheduleQuery.CountAsync(item => item.EndTime >= now),
-                CompletedTaskCount = 0,
+                CompletedTaskCount = await taskQuery.CountAsync(item => item.Status == TaskItemStatus.Completed),
                 RankLabel = "Chưa có dữ liệu xếp hạng"
             };
         }

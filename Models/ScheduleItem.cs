@@ -43,5 +43,7 @@ namespace schedule.Models
         public string? CreatedByEmail { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
     }
 }
