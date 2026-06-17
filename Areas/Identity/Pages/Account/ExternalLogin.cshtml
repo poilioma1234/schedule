@@ -1,0 +1,14 @@
+@page
+@model schedule.Areas.Identity.Pages.Account.ExternalLoginModel
+@{
+    ViewData["Title"] = "Đăng nhập Google";
+}
+
+<div class="auth-shell">
+    <div class="auth-card">
+        <h1>Đang xử lý đăng nhập</h1>
+        <p>Nếu trang không tự chuyển tiếp, hãy quay lại trang đăng nhập và thử lại.</p>
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <a class="btn btn-primary w-100" asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">Quay lại đăng nhập</a>
+    </div>
+</div>

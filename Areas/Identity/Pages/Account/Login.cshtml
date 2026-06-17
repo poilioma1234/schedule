@@ -1,18 +1,18 @@
 @page
-@model schedule.Areas.Identity.Pages.Account.RegisterModel
+@model schedule.Areas.Identity.Pages.Account.LoginModel
 @{
-    ViewData["Title"] = "Đăng ký";
+    ViewData["Title"] = "Đăng nhập";
 }
 
 <div class="auth-shell">
     <div class="auth-card">
-        <h1>Đăng ký tài khoản</h1>
-        <p>Tạo tài khoản để quản lý lịch trình, deadline và nhận nhắc việc qua email.</p>
+        <h1>Đăng nhập</h1>
+        <p>Tiếp tục quản lý lịch trình, deadline và task của bạn.</p>
 
         <form asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="mb-3">
             <button type="submit" class="btn google-auth-btn w-100" name="provider" value="Google">
                 <span class="google-auth-mark">G</span>
-                <span class="google-auth-label">Đăng ký bằng tài khoản Google</span>
+                <span class="google-auth-label">Đăng nhập bằng tài khoản Google</span>
             </button>
         </form>
 
@@ -32,22 +32,21 @@
 
             <div class="mb-3">
                 <label asp-for="Input.Password" class="form-label">Mật khẩu</label>
-                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
                 <span asp-validation-for="Input.Password" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.ConfirmPassword" class="form-label">Nhập lại mật khẩu</label>
-                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
-                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            <div class="form-check mb-3">
+                <input asp-for="Input.RememberMe" class="form-check-input" />
+                <label asp-for="Input.RememberMe" class="form-check-label"></label>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">Tạo tài khoản</button>
+            <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
         </form>
 
         <p class="auth-switch">
-            Đã có tài khoản?
-            <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">Đăng nhập</a>
+            Chưa có tài khoản?
+            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Đăng ký</a>
         </p>
     </div>
 </div>

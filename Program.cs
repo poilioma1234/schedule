@@ -40,6 +40,19 @@ namespace schedule
                 options.AccessDeniedPath = "/Identity/Account/AccessDenied";
             });
 
+            var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+            var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+
+            if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+            {
+                builder.Services.AddAuthentication()
+                    .AddGoogle(options =>
+                    {
+                        options.ClientId = googleClientId;
+                        options.ClientSecret = googleClientSecret;
+                    });
+            }
+
             builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
             builder.Services.Configure<GeminiAiSettings>(builder.Configuration.GetSection("Gemini"));
             builder.Services.AddScoped<IEmailService, EmailService>();

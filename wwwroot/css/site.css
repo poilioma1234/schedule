@@ -347,6 +347,71 @@ body {
   color: #64748b;
 }
 
+.google-auth-btn {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 46px;
+  align-items: center;
+  min-height: 52px;
+  padding: 0;
+  overflow: hidden;
+  color: #ffffff;
+  background: #e74b3f;
+  border: 0;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.google-auth-btn:hover,
+.google-auth-btn:focus {
+  color: #ffffff;
+  background: #db4437;
+  box-shadow: 0 0 0 0.2rem rgba(219, 68, 55, 0.18);
+}
+
+.google-auth-mark {
+  display: inline-grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #ffffff;
+  background: #d93f34;
+  border-radius: 4px 0 0 4px;
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.google-auth-label {
+  grid-column: 2;
+  overflow: hidden;
+  padding: 0 0.75rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  flex: 1;
+  height: 1px;
+  content: "";
+  background: #e5e7eb;
+}
+
+.auth-switch {
+  margin: 1rem 0 0;
+  text-align: center;
+}
+
 .summary-panel,
 .form-card,
 .calendar-panel {

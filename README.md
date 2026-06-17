@@ -226,6 +226,63 @@ Mở trình duyệt:
 http://localhost:5299
 ```
 
+## Cấu Hình Đăng Nhập Google/Gmail
+
+Project hỗ trợ đăng ký/đăng nhập bằng Google OAuth. Khi user bấm `Đăng ký bằng Google`, app lấy email đã xác thực từ Google, tạo tài khoản Identity trong database và tự gán role `User`.
+
+Nếu chưa cấu hình Google Client ID/Secret, nút Google sẽ không hiện; app vẫn đăng nhập bằng email/mật khẩu bình thường.
+
+### 1. Tạo Google OAuth Client
+
+Mở Google Cloud Console:
+
+```text
+https://console.cloud.google.com/apis/credentials
+```
+
+Các bước:
+
+1. Tạo hoặc chọn một Google Cloud project.
+2. Vào `APIs & Services > OAuth consent screen`, cấu hình app name và email hỗ trợ.
+3. Vào `Credentials`, bấm `Create Credentials > OAuth client ID`.
+4. Chọn loại app là `Web application`.
+5. Thêm Authorized redirect URI cho môi trường local:
+
+   ```text
+   http://localhost:5299/signin-google
+   ```
+
+   Nếu tự cấu hình thêm HTTPS profile thì thêm URI tương ứng với đúng port HTTPS đang chạy, ví dụ:
+
+   ```text
+   https://localhost:PORT/signin-google
+   ```
+
+6. Copy `Client ID` và `Client Secret`.
+
+### 2. Lưu Google Client ID/Secret bằng User Secrets
+
+Chạy trong thư mục có file `schedule.csproj`:
+
+```powershell
+cd C:\Users\ADMIN\Documents\Learn\Web\schedule
+dotnet user-secrets set "Authentication:Google:ClientId" "PASTE_GOOGLE_CLIENT_ID" --project schedule.csproj
+dotnet user-secrets set "Authentication:Google:ClientSecret" "PASTE_GOOGLE_CLIENT_SECRET" --project schedule.csproj
+```
+
+Kiểm tra:
+
+```powershell
+dotnet user-secrets list --project schedule.csproj
+```
+
+Khi deploy lên server, dùng biến môi trường:
+
+```text
+Authentication__Google__ClientId=...
+Authentication__Google__ClientSecret=...
+```
+
 ## Cấu Hình AI Chatbot
 
 AI Chatbot dùng Gemini API để gợi ý lịch, task, deadline và mức độ ưu tiên. API key chỉ cần cấu hình một lần ở backend; tất cả user đăng nhập sẽ dùng chung qua server. User không cần tự nhập API key.
