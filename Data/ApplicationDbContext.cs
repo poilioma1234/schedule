@@ -13,6 +13,8 @@ namespace schedule.Data
         public DbSet<ScheduleItem> ScheduleItems => Set<ScheduleItem>();
         public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
         public DbSet<TaskItem> TaskItems => Set<TaskItem>();
+        public DbSet<AiChatConversation> AiChatConversations => Set<AiChatConversation>();
+        public DbSet<AiChatMessage> AiChatMessages => Set<AiChatMessage>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -35,6 +37,21 @@ namespace schedule.Data
                 .HasOne(task => task.ScheduleItem)
                 .WithMany(schedule => schedule.Tasks)
                 .HasForeignKey(task => task.ScheduleItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AiChatMessage>()
+                .HasIndex(message => new { message.UserId, message.CreatedAt });
+
+            builder.Entity<AiChatConversation>()
+                .HasIndex(conversation => new { conversation.UserId, conversation.UpdatedAt });
+
+            builder.Entity<AiChatMessage>()
+                .HasIndex(message => new { message.UserId, message.ConversationId, message.CreatedAt });
+
+            builder.Entity<AiChatConversation>()
+                .HasMany(conversation => conversation.Messages)
+                .WithOne(message => message.Conversation)
+                .HasForeignKey(message => message.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

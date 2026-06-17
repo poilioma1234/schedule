@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var showAiChatLauncher = User.Identity?.IsAuthenticated == true
+        && !string.Equals(currentController, "AiChat", StringComparison.OrdinalIgnoreCase);
+}
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -37,6 +42,9 @@
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="AiChat" asp-action="Index">AI Chat</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Leaderboard" asp-action="Index">Xếp hạng</a>
                             </li>
                         }
@@ -68,9 +76,58 @@
         </div>
     </footer>
 
+    @if (showAiChatLauncher)
+    {
+        <button class="ai-chat-launcher" type="button" data-bs-toggle="modal" data-bs-target="#aiChatPopup" aria-label="Mở AI Chat">
+            AI
+        </button>
+
+        <div class="modal fade ai-chat-popup" id="aiChatPopup" tabindex="-1" aria-labelledby="aiChatPopupLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h2 class="modal-title fs-5" id="aiChatPopupLabel">AI Chat</h2>
+                            <span class="text-muted small">Tạo lịch, task và phân tích deadline</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="AiChat" asp-action="Index">Mở rộng</a>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                        </div>
+                    </div>
+                    <div class="modal-body">
+                        <iframe
+                            class="ai-chat-frame"
+                            src="about:blank"
+                            data-ai-src="@Url.Action("Index", "AiChat", new { embed = true })"
+                            title="AI Chat"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (showAiChatLauncher)
+    {
+        <script>
+            (() => {
+                const popup = document.getElementById('aiChatPopup');
+                if (!popup) {
+                    return;
+                }
+
+                popup.addEventListener('show.bs.modal', () => {
+                    const frame = popup.querySelector('.ai-chat-frame');
+                    if (frame && frame.getAttribute('src') === 'about:blank') {
+                        frame.setAttribute('src', frame.dataset.aiSrc);
+                    }
+                });
+            })();
+        </script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

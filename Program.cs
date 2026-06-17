@@ -41,7 +41,9 @@ namespace schedule
             });
 
             builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+            builder.Services.Configure<GeminiAiSettings>(builder.Configuration.GetSection("Gemini"));
             builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddHttpClient<IAiChatService, GeminiAiChatService>();
             builder.Services.AddHostedService<ReminderService>();
             builder.Services.AddControllersWithViews();
             builder.Services.AddRazorPages();

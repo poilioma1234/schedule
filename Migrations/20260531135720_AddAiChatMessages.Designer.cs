@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using schedule.Data;
 
@@ -11,9 +12,11 @@ using schedule.Data;
 namespace schedule.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260531135720_AddAiChatMessages")]
+    partial class AddAiChatMessages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -220,41 +223,6 @@ namespace schedule.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("schedule.Models.AiChatConversation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UserEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "UpdatedAt");
-
-                    b.ToTable("AiChatConversations");
-                });
-
             modelBuilder.Entity("schedule.Models.AiChatMessage", b =>
                 {
                     b.Property<int>("Id")
@@ -267,9 +235,6 @@ namespace schedule.Migrations
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
-
-                    b.Property<int?>("ConversationId")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -293,11 +258,7 @@ namespace schedule.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ConversationId");
-
                     b.HasIndex("UserId", "CreatedAt");
-
-                    b.HasIndex("UserId", "ConversationId", "CreatedAt");
 
                     b.ToTable("AiChatMessages");
                 });
@@ -545,16 +506,6 @@ namespace schedule.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("schedule.Models.AiChatMessage", b =>
-                {
-                    b.HasOne("schedule.Models.AiChatConversation", "Conversation")
-                        .WithMany("Messages")
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Conversation");
-                });
-
             modelBuilder.Entity("schedule.Models.TaskItem", b =>
                 {
                     b.HasOne("schedule.Models.ScheduleItem", "ScheduleItem")
@@ -564,11 +515,6 @@ namespace schedule.Migrations
                         .IsRequired();
 
                     b.Navigation("ScheduleItem");
-                });
-
-            modelBuilder.Entity("schedule.Models.AiChatConversation", b =>
-                {
-                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("schedule.Models.ScheduleItem", b =>
