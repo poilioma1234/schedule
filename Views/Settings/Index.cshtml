@@ -1,0 +1,91 @@
+@model schedule.ViewModels.SettingsViewModel
+
+@{
+    ViewData["Title"] = "Cài đặt";
+}
+
+<section class="app-page">
+    <div class="app-page-heading">
+        <div>
+            <h1>Cài đặt</h1>
+            <p>Quản lý trải nghiệm cá nhân, quyền riêng tư profile và nhắc lịch.</p>
+        </div>
+    </div>
+
+    @if (TempData["SettingsMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SettingsMessage"]</div>
+    }
+
+    <section class="settings-grid">
+        <article class="app-card">
+            <div class="app-card-title">
+                <h2>Profile</h2>
+                <a asp-controller="Profile" asp-action="Edit">Chỉnh sửa hồ sơ</a>
+            </div>
+            <p class="settings-copy">@Model.DisplayName · @Model.Email</p>
+            <form asp-action="UpdateProfileVisibility" method="post" class="setting-row">
+                <span>
+                    <strong>Profile công khai</strong>
+                    <small>Bật để tham gia bảng xếp hạng và có trang public.</small>
+                </span>
+                <input type="hidden" name="isProfilePublic" value="false" />
+                <input type="checkbox" name="isProfilePublic" value="true" @(Model.IsProfilePublic ? "checked" : "") onchange="this.form.submit()" />
+            </form>
+            <a class="settings-link" href="@Model.PublicProfilePath">Xem trang public</a>
+        </article>
+
+        <article class="app-card">
+            <div class="app-card-title">
+                <h2>Giao diện</h2>
+                <span>Lưu trên trình duyệt</span>
+            </div>
+            <label class="setting-row">
+                <span>
+                    <strong>Giao diện tối</strong>
+                    <small>Đổi màu toàn bộ khu vực làm việc khi dùng buổi tối.</small>
+                </span>
+                <input type="checkbox" data-setting-app-theme />
+            </label>
+            <label class="setting-row">
+                <span>
+                    <strong>Thu gọn sidebar</strong>
+                    <small>Giữ menu trái ở dạng gọn để có thêm không gian.</small>
+                </span>
+                <input type="checkbox" data-setting-app-sidebar />
+            </label>
+        </article>
+
+        <article class="app-card">
+            <div class="app-card-title">
+                <h2>Nhắc lịch</h2>
+                <span>@(Model.EmailReminderEnabled ? "Đang bật" : "Đang tắt")</span>
+            </div>
+            <p class="settings-copy">
+                Email reminder được điều khiển bằng cấu hình hệ thống. Khi bật, lịch có email nhận và thời gian nhắc sẽ được gửi tự động.
+            </p>
+        </article>
+    </section>
+</section>
+
+@section Scripts {
+    <script>
+        const sidebarSetting = document.querySelector('[data-setting-app-sidebar]');
+        const themeSetting = document.querySelector('[data-setting-app-theme]');
+        if (themeSetting) {
+            themeSetting.checked = localStorage.getItem('app-theme') === 'dark';
+            themeSetting.addEventListener('change', () => {
+                localStorage.setItem('app-theme', themeSetting.checked ? 'dark' : 'light');
+                document.body.classList.toggle('app-dark', themeSetting.checked);
+            });
+        }
+
+        if (sidebarSetting) {
+            sidebarSetting.checked = localStorage.getItem('app-sidebar') === 'collapsed';
+            sidebarSetting.addEventListener('change', () => {
+                localStorage.setItem('app-sidebar', sidebarSetting.checked ? 'collapsed' : 'expanded');
+                document.querySelector('[data-app-shell]')?.classList.toggle('is-collapsed', sidebarSetting.checked);
+            });
+        }
+    </script>
+}

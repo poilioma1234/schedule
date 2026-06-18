@@ -20,6 +20,31 @@ namespace schedule.Controllers
             _userManager = userManager;
         }
 
+        public async Task<IActionResult> Index(string? searchString, string statusFilter = "all")
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            var query = _context.TaskItems
+                .Include(task => task.ScheduleItem)
+                .AsQueryable();
+
+            if (!User.IsInRole("Admin"))
+            {
+                query = query.Where(task => task.CreatedByUserId == currentUserId);
+            }
+
+            // Always fetch all tasks to support instant zero-reload client-side filtering via DataTables
+            var allTasks = await query
+                .OrderBy(task => task.Status == TaskItemStatus.Completed)
+                .ThenBy(task => task.Deadline)
+                .ToListAsync();
+
+            ViewBag.SearchString = searchString ?? string.Empty;
+            ViewBag.StatusFilter = NormalizeStatusFilter(statusFilter);
+            ViewBag.TotalTasks = allTasks.Count;
+
+            return View(allTasks);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("ScheduleItemId,Title,Description,Deadline,Status,Priority,Color,AttachmentUrl")] TaskItem task)
@@ -168,6 +193,18 @@ namespace schedule.Controllers
         private bool CanManage(ScheduleItem schedule)
         {
             return User.IsInRole("Admin") || schedule.CreatedByUserId == _userManager.GetUserId(User);
+        }
+
+        private static string NormalizeStatusFilter(string statusFilter)
+        {
+            return statusFilter.ToLowerInvariant() switch
+            {
+                "today" => "today",
+                "overdue" => "overdue",
+                "completed" => "completed",
+                "open" => "open",
+                _ => "all"
+            };
         }
 
         private static void NormalizeTask(TaskItem task)

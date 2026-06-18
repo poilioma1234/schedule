@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using schedule.Data;
-using schedule.Helpers;
-using schedule.Models;
+using schedule.Services;
 using schedule.ViewModels;
 
 namespace schedule.Controllers
@@ -12,81 +9,56 @@ namespace schedule.Controllers
     [Authorize]
     public class LeaderboardController : Controller
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly ILeaderboardService _leaderboardService;
 
-        public LeaderboardController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public LeaderboardController(ApplicationDbContext context, ILeaderboardService leaderboardService)
         {
-            _context = context;
-            _userManager = userManager;
+            _leaderboardService = leaderboardService;
         }
 
-        public async Task<IActionResult> Index(string period = "month", string? month = null)
+        public async Task<IActionResult> Index(string period = "month", string? month = null, DateTime? date = null)
         {
             var normalizedPeriod = NormalizePeriod(period);
-            var selectedMonth = ParseSelectedMonth(month, DateTime.Today);
-            var (startDate, endDate, title) = GetPeriodRange(normalizedPeriod, DateTime.Today, selectedMonth);
+            var today = DateTime.Today;
+            var selectedDate = date?.Date ?? today;
+            var selectedMonth = ParseSelectedMonth(month, today);
+            var (startDate, endDate, title) = GetPeriodRange(normalizedPeriod, today, selectedDate, selectedMonth);
             var exclusiveEndDate = endDate.Date.AddDays(1);
-            var users = (await _userManager.GetUsersInRoleAsync("User"))
-                .Where(user => !IsUserLocked(user))
-                .ToList();
-            var userIds = users.Select(user => user.Id).ToHashSet();
-            var userLookup = users.ToDictionary(user => user.Id, user => user);
-            var profiles = await _context.UserProfiles
-                .Where(profile => userIds.Contains(profile.UserId) && profile.IsProfilePublic)
-                .ToListAsync();
-            var publicUserIds = profiles.Select(profile => profile.UserId).ToHashSet();
-            var completedTasks = await _context.TaskItems
-                .Where(task =>
-                    task.CreatedByUserId != null
-                    && publicUserIds.Contains(task.CreatedByUserId)
-                    && task.Status == TaskItemStatus.Completed
-                    && task.UpdatedAt >= startDate.Date
-                    && task.UpdatedAt < exclusiveEndDate)
-                .ToListAsync();
 
-            var rows = profiles
-                .Select(profile =>
+            var rows = (await _leaderboardService.BuildRowsAsync(startDate, exclusiveEndDate))
+                .Select(row => new LeaderboardRowViewModel
                 {
-                    var tasks = completedTasks
-                        .Where(task => task.CreatedByUserId == profile.UserId)
-                        .ToList();
-                    var user = userLookup[profile.UserId];
-
-                    return new LeaderboardRowViewModel
-                    {
-                        UserId = profile.UserId,
-                        Email = user.Email ?? user.UserName ?? "",
-                        DisplayName = string.IsNullOrWhiteSpace(profile.DisplayName)
-                            ? user.Email ?? user.UserName ?? "User"
-                            : profile.DisplayName,
-                        AvatarPath = profile.AvatarPath,
-                        PublicProfilePath = Url.Action("PublicProfile", "Profile", new { slug = profile.PublicSlug }) ?? $"/Profile/user/{profile.PublicSlug}",
-                        CompletedTaskCount = tasks.Count,
-                        UrgentTaskCount = tasks.Count(task => task.Priority == TaskPriorityLevel.Urgent),
-                        Score = tasks.Sum(task => LeaderboardHelper.PriorityScore(task.Priority))
-                    };
+                    Rank = row.Rank,
+                    UserId = row.UserId,
+                    Email = row.Email,
+                    DisplayName = row.DisplayName,
+                    AvatarPath = row.AvatarPath,
+                    PublicProfilePath = Url.Action("PublicProfile", "Profile", new { slug = row.PublicSlug }) ?? $"/Profile/user/{row.PublicSlug}",
+                    CompletedTaskCount = row.CompletedTaskCount,
+                    OnTimeTaskCount = row.OnTimeTaskCount,
+                    OnTimeRate = row.OnTimeRate,
+                    UrgentTaskCount = row.UrgentTaskCount,
+                    Score = row.Score
                 })
-                .Where(row => row.CompletedTaskCount > 0 || row.Score > 0)
-                .OrderByDescending(row => row.Score)
-                .ThenByDescending(row => row.CompletedTaskCount)
-                .ThenBy(row => row.DisplayName)
-                .Take(3)
                 .ToList();
 
-            for (var index = 0; index < rows.Count; index++)
-            {
-                rows[index].Rank = index + 1;
-            }
+            await _leaderboardService.EnsureAllHistoricalAwardsAsync();
+            var monthlyAwards = normalizedPeriod == "month"
+                ? await _leaderboardService.EnsureMonthlyAwardsAsync(selectedMonth)
+                : new();
 
             var model = new LeaderboardViewModel
             {
                 Period = normalizedPeriod,
                 PeriodTitle = title,
+                SelectedDate = selectedDate.ToString("yyyy-MM-dd"),
                 SelectedMonth = selectedMonth.ToString("yyyy-MM"),
                 StartDate = startDate,
                 EndDate = endDate,
-                Rows = rows
+                IsFinalizedPeriod = normalizedPeriod == "month" && exclusiveEndDate <= today,
+                LastUpdatedAt = DateTime.Now,
+                Rows = rows,
+                MonthlyAwards = monthlyAwards
             };
 
             return View(model);
@@ -97,6 +69,7 @@ namespace schedule.Controllers
             return period.ToLowerInvariant() switch
             {
                 "day" => "day",
+                "week" => "week",
                 "year" => "year",
                 _ => "month"
             };
@@ -120,19 +93,22 @@ namespace schedule.Controllers
         private static (DateTime StartDate, DateTime EndDate, string Title) GetPeriodRange(
             string period,
             DateTime today,
+            DateTime selectedDate,
             DateTime selectedMonth)
         {
             return period switch
             {
-                "day" => (today.Date, today.Date, $"Hôm nay {today:dd/MM/yyyy}"),
+                "day" => (selectedDate.Date, selectedDate.Date, $"Ngày {selectedDate:dd/MM/yyyy}"),
+                "week" => (StartOfWeek(selectedDate), StartOfWeek(selectedDate).AddDays(6), $"Tuần {StartOfWeek(selectedDate):dd/MM} - {StartOfWeek(selectedDate).AddDays(6):dd/MM/yyyy}"),
                 "year" => (new DateTime(today.Year, 1, 1), new DateTime(today.Year, 12, 31), $"Năm {today:yyyy}"),
                 _ => (selectedMonth, selectedMonth.AddMonths(1).AddDays(-1), $"Tháng {selectedMonth:MM/yyyy}")
             };
         }
 
-        private static bool IsUserLocked(IdentityUser user)
+        private static DateTime StartOfWeek(DateTime date)
         {
-            return user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow;
+            var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+            return date.Date.AddDays(-diff);
         }
     }
 }

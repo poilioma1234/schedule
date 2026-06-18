@@ -1,137 +1,213 @@
 @model IEnumerable<schedule.Models.ScheduleItem>
 @using schedule.Models
 
-@functions {
-    private static string TimeAgo(DateTime createdAt)
-    {
-        var span = DateTime.Now - createdAt;
-
-        if (span.TotalDays >= 1)
-        {
-            var days = (int)Math.Floor(span.TotalDays);
-            return days == 1 ? "1 ngày trước" : $"{days} ngày trước";
-        }
-
-        if (span.TotalHours >= 1)
-        {
-            var hours = (int)Math.Floor(span.TotalHours);
-            return hours == 1 ? "1 giờ trước" : $"{hours} giờ trước";
-        }
-
-        if (span.TotalMinutes >= 1)
-        {
-            var minutes = (int)Math.Floor(span.TotalMinutes);
-            return minutes == 1 ? "1 phút trước" : $"{minutes} phút trước";
-        }
-
-        return "Vừa xong";
-    }
-}
-
 @{
-    ViewData["Title"] = "Lịch trình";
+    ViewData["Title"] = "Danh sách lịch trình";
     var isAdminViewingUser = User.IsInRole("Admin") && ViewBag.ViewingUserEmail != null;
 }
 
-<div class="page-heading">
-    <div>
-        <h1>Lịch trình</h1>
-        <p class="text-muted mb-0">Đang xem: @ViewBag.ViewingUserEmail</p>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-        @if (User.IsInRole("Admin"))
-        {
-            <a class="btn btn-outline-secondary" asp-controller="Admin" asp-action="Index">Quay lại Admin</a>
-        }
-        <a class="btn btn-outline-primary" asp-action="Calendar" asp-route-userId="@ViewBag.ViewingUserId">Calendar</a>
-        <a class="btn btn-outline-danger" asp-action="ExportPdf" asp-route-userId="@ViewBag.ViewingUserId">Xuất PDF</a>
-        @if (!User.IsInRole("Admin") || !isAdminViewingUser)
-        {
-            <a class="btn btn-primary" asp-action="Create">Thêm lịch</a>
-        }
-    </div>
-</div>
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
-}
-
-<form method="get" class="toolbar-panel mb-3">
-    <input type="hidden" name="userId" value="@ViewBag.ViewingUserId" />
-    <div>
-        <label class="form-label">Tìm theo tiêu đề</label>
-        <input class="form-control" type="text" name="searchString" value="@ViewBag.SearchString" />
-    </div>
-    <div>
-        <label class="form-label">Ngày bắt đầu</label>
-        <input class="form-control" type="date" name="startDate" value="@ViewBag.StartDate" />
-    </div>
-    <div class="align-self-end d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Lọc</button>
-        <a class="btn btn-outline-secondary" asp-action="Index" asp-route-userId="@ViewBag.ViewingUserId">Đặt lại</a>
-    </div>
-</form>
-
-<div class="table-responsive">
-    <table class="table align-middle table-hover">
-        <thead>
-            <tr>
-                <th>Tiêu đề</th>
-                <th>Bắt đầu</th>
-                <th>Kết thúc</th>
-                <th>Ngày tạo</th>
-                <th>Địa điểm</th>
-                <th>Task</th>
-                <th>Người tạo</th>
-                <th>Nhắc email</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 fw-bold">Danh Sách Lịch Trình</h1>
+            <p class="text-muted mb-0">
+                @if (isAdminViewingUser)
+                {
+                    <span>Đang xem lịch của: <strong class="text-primary">@ViewBag.ViewingUserEmail</strong></span>
+                }
+                else
+                {
+                    <span>Theo dõi, lên lịch và quản lý công việc của bạn.</span>
+                }
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (User.IsInRole("Admin"))
             {
-                var hasOverdueTask = item.Tasks.Any(task => task.Status != TaskItemStatus.Completed && task.Deadline < DateTime.Now);
-                var canEditToday = item.StartTime.Date == DateTime.Today;
-                <tr class="@(item.IsImportant || hasOverdueTask ? "table-danger" : "")">
-                    <td>
-                        <strong>@item.Title</strong>
-                        @if (!string.IsNullOrWhiteSpace(item.Description))
-                        {
-                            <div class="text-muted small">@item.Description</div>
-                        }
-                    </td>
-                    <td>@item.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@item.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>
-                        @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")
-                        <div class="text-muted small">@TimeAgo(item.CreatedAt)</div>
-                    </td>
-                    <td>@item.Location</td>
-                    <td>
-                        <strong>@item.Tasks.Count</strong>
-                        @if (hasOverdueTask)
-                        {
-                            <div class="text-danger small">Có task quá hạn</div>
-                        }
-                    </td>
-                    <td>@item.CreatedByEmail</td>
-                    <td>
-                        @if (!string.IsNullOrWhiteSpace(item.ReceiverEmail))
-                        {
-                            <span>@item.ReceiverEmail</span>
-                            <div class="text-muted small">Trước @item.ReminderMinutes phút</div>
-                        }
-                    </td>
-                    <td class="text-end">
-                        @if (canEditToday)
-                        {
-                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@item.Id">Sửa</a>
-                        }
-                        <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.Id">Xóa</a>
-                    </td>
-                </tr>
+                <a class="btn btn-outline-secondary shadow-sm" asp-controller="Admin" asp-action="Index" asp-route-section="schedules">Quản lý Admin</a>
             }
-        </tbody>
-    </table>
+            <a class="btn btn-outline-primary shadow-sm" asp-action="Calendar" asp-route-userId="@ViewBag.ViewingUserId">Lịch Calendar</a>
+            <a class="btn btn-outline-danger shadow-sm" asp-action="ExportPdf" asp-route-userId="@ViewBag.ViewingUserId">Xuất PDF</a>
+            @if (!User.IsInRole("Admin") || !isAdminViewingUser)
+            {
+                <a class="btn btn-primary shadow-sm" asp-action="Create">+ Tạo Lịch Mới</a>
+            }
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Client-side Smart Filter Panel (Zero Reloads) -->
+    <div class="card border-0 shadow-sm p-4 mb-4 bg-white">
+        <div class="row g-3">
+            <div class="col-md-6 col-lg-5">
+                <label class="form-label fw-bold small text-muted text-uppercase font-monospace">Tìm kiếm nhanh</label>
+                <input class="form-control border-light-subtle shadow-sm" type="text" id="searchFilter" placeholder="Tìm theo tiêu đề, mô tả, người tạo..." />
+            </div>
+            <div class="col-md-4 col-lg-4">
+                <label class="form-label fw-bold small text-muted text-uppercase font-monospace">Lọc theo ngày diễn ra</label>
+                <input class="form-control border-light-subtle shadow-sm" type="date" id="startDateFilter" />
+            </div>
+            <div class="col-md-2 col-lg-3 d-flex align-items-end">
+                <button class="btn btn-outline-secondary w-100 shadow-sm" id="resetFilters">Đặt lại bộ lọc</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DataTables Table Card -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle w-100" id="schedulesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tiêu đề lịch trình</th>
+                            <th>Thời gian</th>
+                            <th>Ngày tạo</th>
+                            <th>Task vụ</th>
+                            <th>Người tạo</th>
+                            <th class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var overdueTaskCount = item.Tasks.Count(task => task.Status != TaskItemStatus.Completed && task.Deadline < DateTime.Now);
+                            var canEdit = User.IsInRole("Admin") || item.StartTime.Date == DateTime.Today;
+                            
+                            // Color borders and tones based on importance / overdue status
+                            var borderClass = overdueTaskCount > 0 ? "border-danger" : (item.IsImportant ? "border-warning" : "border-primary");
+                            var ownerInitial = string.IsNullOrWhiteSpace(item.CreatedByEmail) ? "U" : item.CreatedByEmail.Substring(0, 1).ToUpper();
+                            
+                            <tr>
+                                <!-- Left border colored highlighting -->
+                                <td style="border-left: 4px solid @(overdueTaskCount > 0 ? "#dc3545" : (item.IsImportant ? "#ffc107" : "#0d6efd")); padding-left: 1rem;">
+                                    <div class="fw-semibold text-dark mb-0">@item.Title</div>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 280px;">
+                                        @(item.Description ?? "Không có mô tả chi tiết")
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold d-block text-dark">@item.StartTime.ToString("dd/MM/yyyy")</span>
+                                    <small class="text-muted">@item.StartTime.ToString("HH:mm") - @item.EndTime.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    <span class="d-block text-dark">@item.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                    <small class="text-muted">@item.CreatedAt.ToString("HH:mm")</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary fw-bold">@item.Tasks.Count task</span>
+                                    @if (overdueTaskCount > 0)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger ms-1">@overdueTaskCount quá hạn</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle bg-secondary-subtle text-secondary fw-semibold d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem;">
+                                            @ownerInitial
+                                        </div>
+                                        <span class="small font-monospace">@item.CreatedByEmail</span>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <div class="dropdown">
+                                        <button class="btn btn-light btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Menu ▾
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                            @if (canEdit)
+                                            {
+                                                <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">Sửa lịch trình</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><span class="dropdown-item text-muted disabled">Chỉ sửa trong ngày</span></li>
+                                            }
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@item.Id" onclick="return confirm('Bạn có chắc chắn muốn xóa lịch trình này?');">Xóa lịch trình</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+             // custom date formatting check for DataTable filtering
+             $.fn.dataTable.ext.search.push(
+                 function(settings, data, dataIndex) {
+                     const dateInput = $('#startDateFilter').val();
+                     if (!dateInput) return true;
+                     
+                     // Column index 1 is "Thời gian"
+                     const timeCell = data[1] || "";
+                     const dateMatch = timeCell.match(/(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/);
+                     if (!dateMatch) return false;
+                     
+                     const cellDateStr = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`; // yyyy-MM-dd
+                     return cellDateStr === dateInput;
+                 }
+             );
+
+            const table = $('#schedulesTable').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+                },
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                order: [[1, 'desc']], // Default sort by date
+                columnDefs: [
+                    { orderable: false, targets: 5 }
+                ],
+                dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'>>" +
+                     "<'row'<'col-sm-12'tr>>" +
+                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+            });
+
+            // Pre-fill filters from ViewBag parameters if present
+            const initialSearch = '@ViewBag.SearchString';
+            const initialDate = '@ViewBag.StartDate';
+
+            if (initialSearch) {
+                $('#searchFilter').val(initialSearch);
+                table.search(initialSearch);
+            }
+            if (initialDate) {
+                $('#startDateFilter').val(initialDate);
+            }
+
+            table.draw();
+
+            // Bind client side inputs
+            $('#searchFilter').on('keyup', function() {
+                table.search($(this).val()).draw();
+            });
+
+            $('#startDateFilter').on('change', function() {
+                table.draw();
+            });
+
+            $('#resetFilters').on('click', function() {
+                $('#searchFilter').val('');
+                $('#startDateFilter').val('');
+                table.search('').draw();
+                table.draw();
+            });
+        });
+    </script>
+}

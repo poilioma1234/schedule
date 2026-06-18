@@ -1,75 +1,257 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using schedule.Data
+@inject UserManager<IdentityUser> UserManager
+@inject ApplicationDbContext DbContext
+
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var isAdmin = User.IsInRole("Admin");
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    var userEmail = User.Identity?.Name ?? "";
+    var userId = isAuthenticated ? UserManager.GetUserId(User) : null;
+    string? avatarPath = null;
+    string displayName = userEmail;
+    var alertCount = 0;
+    var today = DateTime.Today;
+    var now = DateTime.Now;
+
+    if (isAuthenticated && !string.IsNullOrWhiteSpace(userId))
+    {
+        var profile = await DbContext.UserProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.UserId == userId);
+        avatarPath = profile?.AvatarPath;
+        displayName = string.IsNullOrWhiteSpace(profile?.DisplayName) ? userEmail : profile!.DisplayName;
+
+        var taskQuery = DbContext.TaskItems.AsNoTracking();
+        var scheduleQuery = DbContext.ScheduleItems.AsNoTracking();
+
+        if (!isAdmin)
+        {
+            taskQuery = taskQuery.Where(item => item.CreatedByUserId == userId);
+            scheduleQuery = scheduleQuery.Where(item => item.CreatedByUserId == userId);
+        }
+
+        var overdueCount = await taskQuery.CountAsync(item => item.Status != schedule.Models.TaskItemStatus.Completed && item.Deadline < now);
+        var todayScheduleCount = await scheduleQuery.CountAsync(item => item.StartTime.Date == today);
+        alertCount = overdueCount + todayScheduleCount;
+    }
+
+    var initial = string.IsNullOrWhiteSpace(displayName) ? "U" : displayName.Substring(0, 1).ToUpperInvariant();
+    string Active(params string[] controllers) => controllers.Contains(currentController, StringComparer.OrdinalIgnoreCase) ? "active" : "";
+    string ActiveSchedule() => currentController == "Schedule" && currentAction != "Calendar" ? "active" : "";
+    string ActiveCalendar() => currentController == "Schedule" && currentAction == "Calendar" ? "active" : "";
+}
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Schedule Manager</title>
+    <link rel="icon" type="image/png" href="~/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="~/favicon.png" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/schedule.styles.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-semibold" asp-area="" asp-controller="Home" asp-action="Index">Schedule Manager</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+<body class="@(isAuthenticated ? "app-shell-body" : "")">
+    @if (isAuthenticated)
+    {
+        var showAdminSidebar = isAdmin && (currentController == "Admin" || currentController == "Profile");
+        <div class="app-shell" data-app-shell>
+            <aside class="app-sidebar @(showAdminSidebar ? "admin-sidebar-layout" : "")">
+                @if (showAdminSidebar)
+                {
+                    <a class="app-brand app-brand-icon-only" asp-controller="Admin" asp-action="Index" aria-label="HUTECH Schedule Admin">
+                        <span class="app-brand-hutech">
+                            <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+                                <rect x="2" y="4" width="28" height="26" rx="4" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                                <rect x="2" y="4" width="28" height="8" rx="4" fill="#2563eb"/>
+                                <line x1="8" y1="2" x2="8" y2="8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+                                <line x1="24" y1="2" x2="24" y2="8" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                                <rect x="7" y="16" width="5" height="4" rx="1" fill="#2563eb" opacity="0.7"/>
+                                <rect x="14" y="16" width="5" height="4" rx="1" fill="#2563eb" opacity="0.7"/>
+                                <rect x="7" y="23" width="5" height="4" rx="1" fill="#2563eb" opacity="0.5"/>
+                                <rect x="14" y="23" width="5" height="4" rx="1" fill="#2563eb" opacity="0.5"/>
+                                <circle cx="33" cy="33" r="8" fill="#f59e0b" stroke="white" stroke-width="1.5"/>
+                                <line x1="33" y1="29" x2="33" y2="33" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                                <line x1="33" y1="33" x2="36" y2="35" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="app-brand-text">
+                            <strong>Schedule</strong>
+                            <small class="d-block" style="font-size:0.7rem;opacity:0.7;">Admin</small>
+                        </span>
+                    </a>
+
+                    <nav class="app-nav" aria-label="Điều hướng chính">
+                        <a class="@(currentController == "Admin" && (ViewContext.HttpContext.Request.Query["section"].ToString() == "overview" || string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["section"].ToString())) ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="overview"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><b>Tổng quan</b></a>
+                        <a class="@(currentController == "Admin" && ViewContext.HttpContext.Request.Query["section"].ToString() == "schedules" ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="schedules"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><b>Lịch trình</b></a>
+                        <a class="@(currentController == "Admin" && ViewContext.HttpContext.Request.Query["section"].ToString() == "tasks" ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="tasks"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><b>Task</b></a>
+                        <a class="@(currentController == "Admin" && ViewContext.HttpContext.Request.Query["section"].ToString() == "users" ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="users"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><b>Người dùng</b></a>
+                        <a class="@(currentController == "Admin" && ViewContext.HttpContext.Request.Query["section"].ToString() == "notifications" ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="notifications"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><b>Thông báo</b></a>
+                        <a class="@(currentController == "Admin" && ViewContext.HttpContext.Request.Query["section"].ToString() == "reports" ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="reports"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><b>Báo cáo</b></a>
+                        <a class="@(currentController == "Admin" && ViewContext.HttpContext.Request.Query["section"].ToString() == "settings" ? "active" : "")" asp-controller="Admin" asp-action="Index" asp-route-section="settings"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><b>Cài đặt</b></a>
+                    </nav>
+                }
+                else
+                {
+                    <a class="app-brand app-brand-icon-only" asp-controller="Home" asp-action="Index" aria-label="HUTECH Schedule">
+                        <span class="app-brand-hutech">
+                            <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+                                <rect x="2" y="4" width="28" height="26" rx="4" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+                                <rect x="2" y="4" width="28" height="8" rx="4" fill="#2563eb"/>
+                                <line x1="8" y1="2" x2="8" y2="8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+                                <line x1="24" y1="2" x2="24" y2="8" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                                <rect x="7" y="16" width="5" height="4" rx="1" fill="#2563eb" opacity="0.7"/>
+                                <rect x="14" y="16" width="5" height="4" rx="1" fill="#2563eb" opacity="0.7"/>
+                                <rect x="7" y="23" width="5" height="4" rx="1" fill="#2563eb" opacity="0.5"/>
+                                <rect x="14" y="23" width="5" height="4" rx="1" fill="#2563eb" opacity="0.5"/>
+                                <circle cx="33" cy="33" r="8" fill="#f59e0b" stroke="white" stroke-width="1.5"/>
+                                <line x1="33" y1="29" x2="33" y2="33" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                                <line x1="33" y1="33" x2="36" y2="35" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="app-brand-text">
+                            <strong>Schedule</strong>
+                        </span>
+                    </a>
+
+                    <nav class="app-nav" aria-label="Điều hướng chính">
+                        <a class="@Active("Home")" asp-controller="Home" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><b>Trang chủ</b></a>
+                        <a class="@ActiveSchedule()" asp-controller="Schedule" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><b>Lịch trình</b></a>
+                        <a class="@Active("Tasks")" asp-controller="Tasks" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><b>Task</b></a>
+                        <a class="@ActiveCalendar()" asp-controller="Schedule" asp-action="Calendar"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><b>Calendar</b></a>
+                        <a class="@Active("Activity")" asp-controller="Activity" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><b>Hoạt động</b></a>
+                        <a class="@Active("Leaderboard")" asp-controller="Leaderboard" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span><b>Xếp hạng</b></a>
+                        <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><b>Báo cáo</b></a>
+                        <a class="@Active("Settings")" asp-controller="Settings" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><b>Cài đặt</b></a>
+                        @if (isAdmin)
+                        {
+                            <a asp-controller="Admin" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><b>Admin</b></a>
+                        }
+                    </nav>
+                }
+
+                <a class="app-profile-card" asp-controller="Profile" asp-action="Index">
+                    @if (!string.IsNullOrWhiteSpace(avatarPath))
+                    {
+                        <img src="@avatarPath" alt="Ảnh đại diện" />
+                    }
+                    else
+                    {
+                        <span>@initial</span>
+                    }
+                    <b>@displayName</b>
+                    <small>@(isAdmin ? "Admin" : "User")</small>
+                </a>
+
+                <button class="app-collapse-button" type="button" data-app-sidebar-toggle>
+                    <span>‹</span>
+                    <b>Thu gọn</b>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Schedule" asp-action="Index">Lịch trình</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Schedule" asp-action="Calendar">Calendar</a>
-                        </li>
-                        @if (User.Identity?.IsAuthenticated == true && !User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Activity" asp-action="Index">Hoạt động</a>
-                            </li>
-                        }
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Leaderboard" asp-action="Index">Xếp hạng</a>
-                            </li>
-                        }
-                        @if (User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
-                            </li>
-                        }
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Giới thiệu</a>
-                        </li>
-                    </ul>
-                    <partial name="_LoginPartial" />
-                </div>
+            </aside>
+
+            <div class="app-content">
+                <header class="app-topbar">
+                    <button class="app-menu-button" type="button" data-app-sidebar-toggle aria-label="Đóng mở menu">☰</button>
+                    <form class="app-search" asp-controller="Search" asp-action="Index" method="get" autocomplete="off">
+                        <span>⌕</span>
+                        <input name="q" type="search" placeholder="Tìm kiếm lịch, task, người dùng..." data-live-search />
+                        <div class="app-search-results" data-live-search-results hidden></div>
+                    </form>
+                    @if (showAdminSidebar && currentController == "Profile")
+                    {
+                        <nav class="app-topbar-nav" style="display:flex; gap:1.25rem; align-items:center; margin: 0 auto; font-weight: 600;">
+                            <a class="text-dark text-decoration-none px-2 py-1 rounded hover-bg" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                            <a class="text-dark text-decoration-none px-2 py-1 rounded hover-bg" asp-controller="Schedule" asp-action="Index">Lịch trình</a>
+                            <a class="text-dark text-decoration-none px-2 py-1 rounded hover-bg" asp-controller="Schedule" asp-action="Calendar">Calendar</a>
+                            <a class="text-dark text-decoration-none px-2 py-1 rounded hover-bg" asp-controller="Activity" asp-action="Index">Hoạt động</a>
+                            <a class="text-dark text-decoration-none px-2 py-1 rounded hover-bg" asp-controller="Leaderboard" asp-action="Index">Xếp hạng</a>
+                            <a class="text-dark text-decoration-none px-2 py-1 rounded hover-bg" asp-controller="Home" asp-action="Privacy">Giới thiệu</a>
+                        </nav>
+                    }
+                    <div class="app-top-actions">
+                        <a class="app-icon-link has-count" asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="overdue" aria-label="Thông báo" title="Task quá hạn">
+                            <span style="font-size: 1.35rem; line-height: 1;">🔔</span>
+                            @if (alertCount > 0)
+                            {
+                                <em>@alertCount</em>
+                            }
+                        </a>
+                        <a class="app-icon-link" asp-controller="Schedule" asp-action="Calendar" aria-label="Calendar" title="Lịch Calendar">
+                            <span style="font-size: 1.35rem; line-height: 1;">📅</span>
+                        </a>
+                        <a class="app-top-profile" asp-controller="Profile" asp-action="Index">
+                            @if (!string.IsNullOrWhiteSpace(avatarPath))
+                            {
+                                <img src="@avatarPath" alt="Ảnh đại diện" />
+                            }
+                            else
+                            {
+                                <span>@initial</span>
+                            }
+                            <b>@userEmail</b>
+                            <small>@(isAdmin ? "Admin" : "User")</small>
+                        </a>
+                        <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+                            <button class="app-logout" type="submit">Đăng xuất</button>
+                        </form>
+                    </div>
+                </header>
+
+                <main class="app-main" role="main">
+                    @RenderBody()
+                </main>
             </div>
-        </nav>
-    </header>
-
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Schedule Manager
         </div>
-    </footer>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
+                <div class="container-fluid app-header-inner">
+                    <a class="navbar-brand fw-semibold" asp-area="" asp-controller="Home" asp-action="Index">Schedule Manager</a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                            aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                        <ul class="navbar-nav flex-grow-1">
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Giới thiệu</a>
+                            </li>
+                        </ul>
+                        <partial name="_LoginPartial" />
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+
+        <footer class="border-top footer text-muted">
+            <div class="container">
+                &copy; 2026 - Schedule Manager
+            </div>
+        </footer>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

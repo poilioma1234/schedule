@@ -15,5 +15,11 @@ namespace schedule.Helpers
                 _ => 1
             };
         }
+
+        public static int TaskScore(TaskItem task)
+        {
+            var onTimeBonus = task.UpdatedAt <= task.Deadline ? 1 : 0;
+            return PriorityScore(task.Priority) + onTimeBonus;
+        }
     }
 }

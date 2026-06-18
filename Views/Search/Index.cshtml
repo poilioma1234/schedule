@@ -1,0 +1,50 @@
+@model schedule.ViewModels.SearchViewModel
+
+@{
+    ViewData["Title"] = "Tìm kiếm";
+}
+
+<section class="app-page">
+    <div class="app-page-heading">
+        <div>
+            <h1>Tìm kiếm</h1>
+            <p>Kết quả phù hợp với lịch trình, task và người dùng bạn có quyền xem.</p>
+        </div>
+    </div>
+
+    <form class="smart-filter-card" asp-action="Index" method="get">
+        <label>
+            Từ khóa
+            <input class="form-control" name="q" value="@Model.Query" placeholder="Nhập tiêu đề, email, task..." />
+        </label>
+        <button class="btn btn-primary" type="submit">Tìm kiếm</button>
+    </form>
+
+    <section class="app-card">
+        <div class="app-card-title">
+            <h2>Kết quả</h2>
+            <span>@Model.Results.Count mục</span>
+        </div>
+
+        @if (Model.Results.Any())
+        {
+            <div class="search-result-list">
+                @foreach (var item in Model.Results)
+                {
+                    <a href="@item.Url">
+                        <span>@item.Type</span>
+                        <strong>@item.Title</strong>
+                        <small>@item.Detail</small>
+                    </a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state compact">
+                <h3>Chưa có kết quả</h3>
+                <p>Nhập ít nhất 2 ký tự để tìm nhanh lịch, task hoặc người dùng.</p>
+            </div>
+        }
+    </section>
+</section>

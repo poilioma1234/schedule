@@ -49,12 +49,9 @@ namespace schedule.Controllers
                 .Include(task => task.ScheduleItem)
                 .AsQueryable();
 
-            if (!User.IsInRole("Admin"))
-            {
-                var currentUserId = _userManager.GetUserId(User);
-                query = query.Where(item => item.CreatedByUserId == currentUserId);
-                taskQuery = taskQuery.Where(task => task.CreatedByUserId == currentUserId);
-            }
+            var currentUserId = _userManager.GetUserId(User);
+            query = query.Where(item => item.CreatedByUserId == currentUserId);
+            taskQuery = taskQuery.Where(task => task.CreatedByUserId == currentUserId);
 
             model.TotalSchedules = await query.CountAsync();
             model.TodaySchedules = await query.CountAsync(item => item.StartTime.Date == today);
@@ -63,6 +60,9 @@ namespace schedule.Controllers
             model.ImportantSchedules = await query.CountAsync(item => item.IsImportant);
             model.TodayTaskCount = await taskQuery.CountAsync(task => task.Deadline.Date == today);
             model.OverdueTaskCount = await taskQuery.CountAsync(task => task.Status != TaskItemStatus.Completed && task.Deadline < now);
+            model.CompletedTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.Completed);
+            model.InProgressTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.InProgress);
+            model.PendingTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.NotStarted);
             model.UpcomingItems = await query
                 .Where(item => item.EndTime >= now)
                 .OrderBy(item => item.StartTime)
@@ -78,6 +78,36 @@ namespace schedule.Controllers
                 .OrderBy(task => task.Deadline)
                 .Take(6)
                 .ToListAsync();
+            model.Reminders = await query
+                .Where(item => item.StartTime >= now && item.StartTime <= now.AddDays(2))
+                .OrderBy(item => item.StartTime)
+                .Take(3)
+                .ToListAsync();
+            var recentTasks = await taskQuery
+                .OrderByDescending(task => task.UpdatedAt)
+                .Take(3)
+                .ToListAsync();
+            model.RecentActivities = recentTasks
+                .Select(task =>
+                {
+                    var diff = now - task.UpdatedAt;
+                    string elapsed;
+                    if (diff.TotalMinutes < 1) elapsed = "vừa xong";
+                    else if (diff.TotalHours < 1) elapsed = $"{(int)Math.Floor(diff.TotalMinutes)} phút trước";
+                    else if (diff.TotalDays < 1) elapsed = $"{(int)Math.Floor(diff.TotalHours)} giờ trước";
+                    else elapsed = $"{(int)Math.Floor(diff.TotalDays)} ngày trước";
+
+                    return new HomeActivityItemViewModel
+                    {
+                        Title = task.Status == TaskItemStatus.Completed
+                            ? $"Bạn đã hoàn thành task \"{task.Title}\""
+                            : $"Bạn đã cập nhật task \"{task.Title}\"",
+                        Detail = (task.ScheduleItem?.Title ?? "Không rõ lịch") + " · " + elapsed,
+                        OccurredAt = task.UpdatedAt,
+                        Tone = task.Status == TaskItemStatus.Completed ? "green" : task.Deadline < now ? "red" : "blue"
+                    };
+                })
+                .ToList();
 
             return View(model);
         }

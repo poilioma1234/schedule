@@ -54,7 +54,8 @@
 
         <div class="mb-3">
             <label asp-for="MusicUrl" class="form-label">Nhạc trong profile</label>
-            <input asp-for="MusicUrl" class="form-control" placeholder="https://..." />
+            <input asp-for="MusicUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..." />
+            <div class="form-text">Dán link YouTube hoặc youtu.be. Khi xem profile, hệ thống sẽ hiện thành khung video.</div>
             <span asp-validation-for="MusicUrl" class="text-danger"></span>
         </div>
 

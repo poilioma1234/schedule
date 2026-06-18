@@ -1,0 +1,195 @@
+@model IEnumerable<schedule.Models.TaskItem>
+@using schedule.Helpers
+@using schedule.Models
+
+@{
+    ViewData["Title"] = "Danh sách Task";
+    var filters = new[]
+    {
+        new { Value = "all", Label = "Tất cả" },
+        new { Value = "today", Label = "Hôm nay" },
+        new { Value = "open", Label = "Đang mở (Chưa hoàn thành)" },
+        new { Value = "overdue", Label = "Quá hạn" },
+        new { Value = "completed", Label = "Hoàn thành" }
+    };
+}
+
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 fw-bold">Danh Sách Nhiệm Vụ</h1>
+            <p class="text-muted mb-0">Theo dõi, quản lý và cập nhật tiến độ công việc hàng ngày.</p>
+        </div>
+        <div>
+            <a class="btn btn-primary shadow-sm" asp-controller="Schedule" asp-action="Create">+ Tạo Lịch Trình</a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Zero-Reload Smart Filters -->
+    <div class="card border-0 shadow-sm p-4 mb-4 bg-white">
+        <div class="row g-3">
+            <div class="col-md-5">
+                <label class="form-label fw-bold small text-muted text-uppercase font-monospace">Tìm kiếm nhiệm vụ</label>
+                <input class="form-control border-light-subtle shadow-sm" type="text" id="searchFilter" placeholder="Tên task, lịch trình, người tạo..." />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-muted text-uppercase font-monospace">Bộ lọc trạng thái</label>
+                <select class="form-select border-light-subtle shadow-sm" id="statusFilter">
+                    @foreach (var filter in filters)
+                    {
+                        <option value="@filter.Value" selected="@(ViewBag.StatusFilter == filter.Value ? "selected" : null)">@filter.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-outline-secondary w-100 shadow-sm" id="resetFilters">Đặt lại bộ lọc</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DataTable Card -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle w-100" id="tasksTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tên nhiệm vụ</th>
+                            <th>Hạn chót</th>
+                            <th>Trạng thái</th>
+                            <th>Mức độ</th>
+                            <th class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model)
+                        {
+                            var effectiveStatus = TaskDisplayHelper.EffectiveStatus(task, DateTime.Now);
+                            var isOverdue = effectiveStatus == TaskItemStatus.Overdue;
+                            
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="d-inline-block rounded-circle me-3 shadow-sm" style="width: 14px; height: 14px; background: @task.Color; min-width: 14px;"></span>
+                                        <div>
+                                            <div class="fw-semibold text-dark mb-0">@task.Title</div>
+                                            <small class="text-muted">
+                                                Thuộc: <strong class="text-secondary">@(task.ScheduleItem?.Title ?? "Lịch cá nhân")</strong> · @task.CreatedByEmail
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-bold d-block @(isOverdue ? "text-danger" : "text-dark")">
+                                        @task.Deadline.ToString("dd/MM/yyyy")
+                                    </span>
+                                    <small class="text-muted">@task.Deadline.ToString("HH:mm")</small>
+                                </td>
+                                <td data-search="status-@effectiveStatus.ToString().ToLower()">
+                                    <span class="badge @(isOverdue ? "bg-danger" : (effectiveStatus == TaskItemStatus.Completed ? "bg-success" : "bg-primary")) fw-semibold">
+                                        @TaskDisplayHelper.StatusText(effectiveStatus)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-secondary py-2 px-3">
+                                        @TaskDisplayHelper.PriorityText(task.Priority)
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-2">
+                                        <a asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id" class="btn btn-sm btn-outline-primary shadow-sm rounded-3 px-3">Sửa</a>
+                                        <a asp-controller="Schedule" asp-action="Edit" asp-route-id="@task.ScheduleItemId" class="btn btn-sm btn-outline-secondary shadow-sm rounded-3 px-3">Mở lịch</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Register client-side DataTables custom filter function
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    const statusFilter = $('#statusFilter').val();
+                    if (statusFilter === 'all') return true;
+
+                    // Column 2 is "Trạng thái" (index 2)
+                    const statusText = data[2] || "";
+                    const isCompleted = statusText.includes('status-completed');
+                    const isOverdue = statusText.includes('status-overdue');
+
+                    // Column 1 is "Hạn chót" (index 1) - extract using regex supporting any separator
+                    const deadlineText = data[1] || "";
+                    const dateMatch = deadlineText.match(/(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/);
+                    if (!dateMatch) return true;
+                    
+                    const cellDay = dateMatch[1];
+                    const cellMonth = dateMatch[2];
+                    const cellYear = dateMatch[3];
+
+                    const now = new Date();
+                    const day = ('0' + now.getDate()).slice(-2);
+                    const month = ('0' + (now.getMonth() + 1)).slice(-2);
+                    const year = now.getFullYear().toString();
+
+                    if (statusFilter === 'today') {
+                        return cellDay === day && cellMonth === month && cellYear === year;
+                    } else if (statusFilter === 'open') {
+                        return !isCompleted;
+                    } else if (statusFilter === 'overdue') {
+                        return isOverdue;
+                    } else if (statusFilter === 'completed') {
+                        return isCompleted;
+                    }
+                    return true;
+                }
+            );
+
+            const table = $('#tasksTable').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+                },
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                order: [[1, 'asc']], // Sort by deadline ascending
+                columnDefs: [
+                    { orderable: false, targets: 4 }
+                ],
+                dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'>>" +
+                     "<'row'<'col-sm-12'tr>>" +
+                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+            });
+
+            // Bind filtering actions
+            $('#searchFilter').on('keyup', function() {
+                table.search($(this).val()).draw();
+            });
+
+            $('#statusFilter').on('change', function() {
+                table.draw();
+            });
+
+            $('#resetFilters').on('click', function() {
+                $('#searchFilter').val('');
+                $('#statusFilter').val('all');
+                table.search('').draw();
+                table.draw();
+            });
+        });
+    </script>
+}

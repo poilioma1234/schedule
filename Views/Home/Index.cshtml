@@ -4,214 +4,414 @@
 
 @{
     ViewData["Title"] = "Trang chủ";
+    var totalTrackedTasks = Math.Max(1, Model.CompletedTaskCount + Model.InProgressTaskCount + Model.PendingTaskCount);
+    var completedPercent = (int)Math.Round(Model.CompletedTaskCount * 100.0 / totalTrackedTasks);
+    var progressPercent = (int)Math.Round(Model.InProgressTaskCount * 100.0 / totalTrackedTasks);
+    var pendingPercent = Math.Max(0, 100 - completedPercent - progressPercent);
 }
 
 @if (Model.IsAuthenticated)
 {
-    <section class="dashboard-hero">
-        <div>
-            <p class="eyebrow">Xin chào, @Model.UserEmail</p>
-            <h1>Hôm nay mình sắp xếp gì?</h1>
-            <p class="hero-copy">
-                Xem nhanh lịch, task hôm nay, task quá hạn và mở calendar để kiểm soát thời gian trong ngày.
-            </p>
-            <div class="hero-actions">
-                <a class="btn btn-light btn-lg" asp-controller="Schedule" asp-action="Create">Thêm lịch mới</a>
-                <a class="btn btn-outline-light btn-lg" asp-controller="Schedule" asp-action="Calendar">Xem calendar</a>
-                <a class="btn btn-outline-light btn-lg" asp-controller="Activity" asp-action="Index">Xem biểu đồ</a>
+    <div class="container-fluid px-4 py-4">
+        <!-- Hero Greeting Banner -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4 home-hero-banner text-white position-relative overflow-hidden" 
+             style="background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);">
+            <!-- Background floating elements for aesthetics -->
+            <div class="position-absolute bg-white opacity-10 rounded-circle" style="width: 250px; height: 250px; top: -100px; right: -50px;"></div>
+            <div class="position-absolute bg-white opacity-10 rounded-circle" style="width: 150px; height: 150px; bottom: -50px; left: -30px;"></div>
+            
+            <div class="card-body p-5 position-relative">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <span class="badge bg-white text-primary fw-bold px-3 py-2 rounded-pill mb-3">Xin chào, @Model.UserEmail</span>
+                        <h1 class="display-5 fw-bold mb-2">Hôm nay mình sắp xếp gì?</h1>
+                        <p class="lead opacity-90 mb-4">Theo dõi lịch trình trong ngày, kiểm tra deadline và tối ưu hóa thời gian làm việc của bạn.</p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a class="btn btn-white text-primary fw-semibold px-4 py-2 shadow-sm" asp-controller="Schedule" asp-action="Create">+ Tạo Lịch Trình</a>
+                            <a class="btn btn-outline-white fw-semibold px-4 py-2" asp-controller="Schedule" asp-action="Calendar">Mở Calendar</a>
+                            <a class="btn btn-outline-white fw-semibold px-4 py-2" asp-controller="Activity" asp-action="Index">Xem Hoạt Động</a>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mt-4 mt-lg-0">
+                        <div class="card border-0 bg-white text-dark shadow rounded-4 p-4 text-center">
+                            <span class="text-muted text-uppercase small fw-bold font-monospace">Hôm Nay Bạn Có</span>
+                            <div class="display-4 fw-bold my-2 text-primary">@Model.TodayTaskCount</div>
+                            <span class="small text-danger fw-semibold">
+                                <i class="bi bi-exclamation-triangle-fill"></i> @Model.OverdueTaskCount task quá hạn cần xử lý!
+                            </span>
+                            <a asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="today" class="btn btn-primary-subtle btn-sm mt-3 w-100 py-2 rounded-3 text-primary border-0 fw-semibold">Xem chi tiết</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="today-focus">
-            <span>Task hôm nay</span>
-            <strong>@Model.TodayTaskCount</strong>
-            <p>@(Model.OverdueTaskCount > 0 ? $"Bạn có {Model.OverdueTaskCount} task quá hạn cần xử lý." : "Không có task quá hạn.")</p>
-        </div>
-    </section>
 
-    <section class="stats-grid">
-        <div class="stat-card">
-            <span>Tổng lịch</span>
-            <strong>@Model.TotalSchedules</strong>
+        <!-- 4 Metric Cards Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-primary border-3">
+                    <div class="card-body p-4 d-flex align-items-center">
+                        <div class="rounded-circle bg-primary-subtle p-3 me-3 text-primary">
+                            📅
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Tổng lịch trình</span>
+                            <h4 class="mb-0 fw-bold">@Model.TotalSchedules</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-info border-3">
+                    <div class="card-body p-4 d-flex align-items-center">
+                        <div class="rounded-circle bg-info-subtle p-3 me-3 text-info">
+                            ✓
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Task hôm nay</span>
+                            <h4 class="mb-0 fw-bold">@Model.TodayTaskCount</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-danger border-3">
+                    <div class="card-body p-4 d-flex align-items-center">
+                        <div class="rounded-circle bg-danger-subtle p-3 me-3 text-danger">
+                            ⚠️
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Task quá hạn</span>
+                            <h4 class="mb-0 fw-bold text-danger">@Model.OverdueTaskCount</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-warning border-3">
+                    <div class="card-body p-4 d-flex align-items-center">
+                        <div class="rounded-circle bg-warning-subtle p-3 me-3 text-warning">
+                            ⭐
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Lịch quan trọng</span>
+                            <h4 class="mb-0 fw-bold text-warning">@Model.ImportantSchedules</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="stat-card">
-            <span>Task hôm nay</span>
-            <strong>@Model.TodayTaskCount</strong>
-        </div>
-        <div class="stat-card">
-            <span>Task quá hạn</span>
-            <strong>@Model.OverdueTaskCount</strong>
-        </div>
-        <div class="stat-card">
-            <span>Lịch quan trọng</span>
-            <strong>@Model.ImportantSchedules</strong>
-        </div>
-    </section>
 
-    <section class="content-split">
-        <div class="panel-section">
-            <div class="section-title">
-                <h2>Task hôm nay</h2>
-                <a asp-controller="Schedule" asp-action="Index">Xem lịch</a>
+        <!-- 3-Column Content Layout (Today's Tasks, Today's Schedules, Overdue Tasks) -->
+        <div class="row g-4 mb-4">
+            <!-- Column 1: Today's Tasks -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-dark">Task Hôm Nay</h5>
+                        <a asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="today" class="small text-decoration-none">Xem tất cả</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @if (!Model.TodayTasks.Any())
+                            {
+                                <div class="text-center py-5 text-muted px-3">
+                                    <p class="fs-4 mb-2">🎉</p>
+                                    <h6>Không có việc trong ngày</h6>
+                                    <p class="small">Tạo task trong ngày để hiển thị ở đây.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var task in Model.TodayTasks.Take(4))
+                                {
+                                    var effectiveStatus = TaskDisplayHelper.EffectiveStatus(task, DateTime.Now);
+                                    <a class="list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center justify-content-between @(effectiveStatus == TaskItemStatus.Overdue ? "list-group-item-danger-subtle" : "")" 
+                                       asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <span class="badge bg-light text-dark font-monospace mt-1">@task.Deadline.ToString("HH:mm")</span>
+                                            <div>
+                                                <strong class="text-dark d-block">@task.Title</strong>
+                                                <small class="text-muted">@(task.ScheduleItem?.Title ?? "Lịch cá nhân")</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-secondary-subtle text-secondary small">
+                                            @TaskDisplayHelper.PriorityText(task.Priority)
+                                        </span>
+                                    </a>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 text-center py-3">
+                        <a asp-controller="Schedule" asp-action="Create" class="btn btn-outline-primary btn-sm rounded-pill px-4">+ Thêm task qua lịch</a>
+                    </div>
+                </div>
             </div>
 
-            @if (Model.TodayTasks.Any())
-            {
-                <div class="task-list compact">
-                    @foreach (var task in Model.TodayTasks)
-                    {
-                        var effectiveStatus = TaskDisplayHelper.EffectiveStatus(task, DateTime.Now);
-                        <a class="task-card task-link @(effectiveStatus == TaskItemStatus.Overdue ? "is-overdue" : "")"
-                           style="border-left-color:@task.Color"
-                           asp-controller="Schedule"
-                           asp-action="Edit"
-                           asp-route-id="@task.ScheduleItemId">
-                            <div>
-                                <div class="task-title-row">
-                                    <strong>@task.Title</strong>
-                                    <span class="task-badge">@TaskDisplayHelper.StatusText(effectiveStatus)</span>
+            <!-- Column 2: Today's Schedules -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-dark">Lịch Hôm Nay</h5>
+                        <a asp-controller="Schedule" asp-action="Index" class="small text-decoration-none">Xem danh sách</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @if (!Model.UpcomingItems.Any())
+                            {
+                                <div class="text-center py-5 text-muted px-3">
+                                    <p class="fs-4 mb-2">☕</p>
+                                    <h6>Không có lịch hôm nay</h6>
+                                    <p class="small">Lên kế hoạch các cuộc họp hoặc hoạt động mới.</p>
                                 </div>
-                                <div class="task-meta">
-                                    <span>@task.Deadline.ToString("HH:mm")</span>
-                                    <span>@TaskDisplayHelper.PriorityText(task.Priority)</span>
-                                    <span>@task.ScheduleItem?.Title</span>
+                            }
+                            else
+                            {
+                                @foreach (var item in Model.UpcomingItems.Take(4))
+                                {
+                                    <a class="list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center justify-content-between" 
+                                       asp-controller="Schedule" asp-action="Edit" asp-route-id="@item.Id">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <span class="badge bg-primary-subtle text-primary font-monospace mt-1">@item.StartTime.ToString("HH:mm")</span>
+                                            <div>
+                                                <strong class="text-dark d-block">@item.Title</strong>
+                                                <small class="text-muted">@(item.Location ?? "Chưa có địa điểm")</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-light text-muted small">
+                                            @(item.StartTime.Date == DateTime.Today ? "Hôm nay" : item.StartTime.ToString("dd/MM"))
+                                        </span>
+                                    </a>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 text-center py-3">
+                        <a asp-controller="Schedule" asp-action="Calendar" class="btn btn-outline-primary btn-sm rounded-pill px-4">Xem calendar</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Overdue Tasks -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100 border-start border-danger border-2">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-danger">Task Quá Hạn</h5>
+                        <span class="badge bg-danger">@Model.OverdueTaskCount</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @if (!Model.OverdueTasks.Any())
+                            {
+                                <div class="text-center py-5 text-muted px-3">
+                                    <p class="fs-4 mb-2">🌿</p>
+                                    <h6 class="text-success">Không có task quá hạn</h6>
+                                    <p class="small">Tiến độ công việc rất tốt.</p>
                                 </div>
+                            }
+                            else
+                            {
+                                @foreach (var task in Model.OverdueTasks.Take(4))
+                                {
+                                    <a class="list-group-item list-group-item-action list-group-item-danger p-3 border-0 border-bottom d-flex align-items-center justify-content-between" 
+                                       asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id">
+                                        <div>
+                                            <strong class="text-danger d-block">@task.Title</strong>
+                                            <small class="text-muted">Trễ từ: @task.Deadline.ToString("dd/MM HH:mm")</small>
+                                        </div>
+                                        <span class="badge bg-danger-subtle text-danger small">
+                                            @TaskDisplayHelper.PriorityText(task.Priority)
+                                        </span>
+                                    </a>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 text-center py-3">
+                        <a asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="overdue" class="btn btn-outline-danger btn-sm rounded-pill px-4">Xem tất cả trễ hạn</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row (Task Stats, Recent Activity Feed, Reminders) -->
+        <div class="row g-4">
+            <!-- Donut Task Stats Chart -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="m-0 fw-bold text-dark">Phân Phối Task</h5>
+                    </div>
+                    <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+                        <div style="position: relative; width: 180px; height: 180px;">
+                            <canvas id="taskDonutChart"></canvas>
+                        </div>
+                        <div class="w-100 mt-4 small font-monospace">
+                            <div class="d-flex justify-content-between border-bottom py-2">
+                                <span><strong class="text-success">■</strong> Hoàn thành:</span>
+                                <strong>@Model.CompletedTaskCount (@completedPercent%)</strong>
                             </div>
-                        </a>
+                            <div class="d-flex justify-content-between border-bottom py-2">
+                                <span><strong class="text-primary">■</strong> Đang làm:</span>
+                                <strong>@Model.InProgressTaskCount (@progressPercent%)</strong>
+                            </div>
+                            <div class="d-flex justify-content-between py-2">
+                                <span><strong class="text-warning">■</strong> Chờ xử lý:</span>
+                                <strong>@Model.PendingTaskCount (@pendingPercent%)</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-dark">Hoạt Động Gần Đây</h5>
+                        <a asp-controller="Activity" asp-action="Index" class="small text-decoration-none">Tất cả</a>
+                    </div>
+                    <div class="card-body p-4 pt-0">
+                        <div class="timeline-activity mt-3">
+                            @if (!Model.RecentActivities.Any())
+                            {
+                                <div class="text-center py-5 text-muted">Chưa có hoạt động.</div>
+                            }
+                            else
+                            {
+                                @foreach (var item in Model.RecentActivities.Take(4))
+                                {
+                                    <div class="timeline-activity-item d-flex mb-3 position-relative">
+                                        <div class="timeline-indicator-dot bg-@item.Tone shadow-sm"></div>
+                                        <div class="timeline-activity-content ms-3 flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <strong class="text-dark small">@item.Title</strong>
+                                                <small class="text-muted font-monospace" style="font-size: 0.75rem;">@item.OccurredAt.ToString("HH:mm")</small>
+                                            </div>
+                                            <p class="text-muted small mb-0">@item.Detail</p>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Reminders -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="m-0 fw-bold text-dark">Nhắc Nhở Gần Đây</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @if (!Model.Reminders.Any())
+                            {
+                                <div class="text-center py-5 text-muted px-3">
+                                    <p class="fs-4 mb-2">🔔</p>
+                                    <h6>Không có lịch nhắc nhở</h6>
+                                    <p class="small">Lịch trong 2 ngày tới sẽ hiển thị ở đây.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var item in Model.Reminders.Take(4))
+                                {
+                                    <a class="list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center justify-content-between" 
+                                       asp-controller="Schedule" asp-action="Edit" asp-route-id="@item.Id">
+                                        <div>
+                                            <strong class="text-dark d-block">@item.Title</strong>
+                                            <small class="text-muted">@(item.Location ?? "Không có địa điểm")</small>
+                                        </div>
+                                        <span class="badge bg-warning-subtle text-warning font-monospace py-2">
+                                            @item.StartTime.ToString("HH:mm")
+                                        </span>
+                                    </a>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @section Scripts {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const ctx = document.getElementById('taskDonutChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Hoàn thành', 'Đang làm', 'Chờ xử lý'],
+                        datasets: [{
+                            data: [@Model.CompletedTaskCount, @Model.InProgressTaskCount, @Model.PendingTaskCount],
+                            backgroundColor: ['#198754', '#0d6efd', '#ffc107'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ' ' + context.label + ': ' + context.raw + ' task';
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '75%'
                     }
-                </div>
-            }
-            else
-            {
-                <div class="empty-state compact">
-                    <h3>Hôm nay chưa có task</h3>
-                    <p>Mở một lịch và thêm task để dashboard theo dõi deadline trong ngày.</p>
-                    <a class="btn btn-primary" asp-controller="Schedule" asp-action="Create">Thêm lịch đầu tiên</a>
-                </div>
-            }
-        </div>
-
-        <div class="panel-section">
-            <div class="section-title">
-                <h2>Task quá hạn</h2>
-                <span class="text-danger">@Model.OverdueTaskCount</span>
-            </div>
-
-            @if (Model.OverdueTasks.Any())
-            {
-                <div class="task-list compact">
-                    @foreach (var task in Model.OverdueTasks)
-                    {
-                        <a class="task-card task-link is-overdue"
-                           style="border-left-color:@task.Color"
-                           asp-controller="Schedule"
-                           asp-action="Edit"
-                           asp-route-id="@task.ScheduleItemId">
-                            <div>
-                                <div class="task-title-row">
-                                    <strong>@task.Title</strong>
-                                    <span class="task-badge">Quá hạn</span>
-                                </div>
-                                <div class="task-meta">
-                                    <span>@task.Deadline.ToString("dd/MM HH:mm")</span>
-                                    <span>@TaskDisplayHelper.PriorityText(task.Priority)</span>
-                                </div>
-                            </div>
-                        </a>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="empty-state compact">
-                    <h3>Không có task quá hạn</h3>
-                    <p>Ổn đó. Những task trễ deadline sẽ xuất hiện ở đây.</p>
-                </div>
-            }
-        </div>
-    </section>
-
-    <section class="content-split">
-        <div class="panel-section">
-            <div class="section-title">
-                <h2>Lịch cần chú ý</h2>
-                <a asp-controller="Schedule" asp-action="Index">Xem tất cả</a>
-            </div>
-
-            @if (Model.UpcomingItems.Any())
-            {
-                <div class="upcoming-list">
-                    @foreach (var item in Model.UpcomingItems)
-                    {
-                        var isOngoing = item.StartTime <= DateTime.Now && item.EndTime >= DateTime.Now;
-                        <a class="upcoming-item" asp-controller="Schedule" asp-action="Edit" asp-route-id="@item.Id">
-                            <div>
-                                <strong>@item.Title</strong>
-                                <span>@item.Location</span>
-                            </div>
-                            <div class="upcoming-time">
-                                <em>@(isOngoing ? "Đang diễn ra" : "Sắp tới")</em>
-                                <time>@item.StartTime.ToString("dd/MM HH:mm")</time>
-                            </div>
-                        </a>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="empty-state compact">
-                    <h3>Không có lịch cần chú ý</h3>
-                    <p>Bạn có thể thêm lịch học, deadline hoặc công việc mới để hệ thống nhắc đúng lúc.</p>
-                </div>
-            }
-        </div>
-
-        <div class="panel-section guide-panel">
-            <h2>Luồng sử dụng nhanh</h2>
-            <ol>
-                <li>Tạo lịch như một nhóm công việc lớn.</li>
-                <li>Vào lịch đó và thêm các task/deadline nhỏ.</li>
-                <li>Chọn mức ưu tiên để calendar đổi màu trực quan.</li>
-                <li>Theo dõi task hôm nay và task quá hạn ở dashboard.</li>
-            </ol>
-            <a class="btn btn-outline-primary w-100 mt-2" asp-controller="Schedule" asp-action="ExportPdf">Xuất PDF</a>
-        </div>
-    </section>
+                });
+            });
+        </script>
+    }
 }
 else
 {
-    <section class="home-panel py-5">
-        <div class="row align-items-center g-4">
-            <div class="col-lg-7">
-                <p class="text-primary fw-semibold mb-2">Quản lý thời gian cá nhân</p>
-                <h1 class="display-5 fw-bold">Theo dõi lịch học, deadline và công việc trong một nơi.</h1>
-                <p class="lead text-muted mt-3">
-                    Schedule Manager giúp bạn tạo lịch, chia lịch thành task, xem calendar, nhận email nhắc việc và xuất lịch ra PDF.
-                </p>
-                <div class="d-flex gap-2 mt-4 flex-wrap">
-                    <a class="btn btn-primary btn-lg" asp-area="Identity" asp-page="/Account/Login">Đăng nhập</a>
-                    <a class="btn btn-outline-secondary btn-lg" asp-area="Identity" asp-page="/Account/Register">Tạo tài khoản</a>
+    <!-- Unauthenticated View -->
+    <div class="container py-5">
+        <div class="row align-items-center g-5 py-5">
+            <div class="col-lg-7 text-center text-lg-start">
+                <span class="badge bg-primary px-3 py-2 rounded-pill mb-3">Ứng dụng quản lý thời gian</span>
+                <h1 class="display-4 fw-bold lh-sm mb-3 text-dark">Theo dõi lịch học, deadline và công việc trong một nơi.</h1>
+                <p class="col-lg-10 fs-5 text-muted">Schedule Manager giúp bạn lập kế hoạch lịch trình, chia công việc thành các task nhỏ, theo dõi trên Calendar, nhận thông báo nhắc nhở qua Email và dễ dàng xuất lịch trình ra file PDF.</p>
+                <div class="d-flex gap-3 justify-content-center justify-content-lg-start mt-4">
+                    <a class="btn btn-primary btn-lg px-5 py-3 shadow" asp-area="Identity" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-outline-secondary btn-lg px-5 py-3" asp-area="Identity" asp-page="/Account/Register">Tạo tài khoản</a>
                 </div>
             </div>
-            <div class="col-lg-5">
-                <div class="summary-panel">
-                    <div class="summary-row">
-                        <span>Quản lý lịch cá nhân</span>
-                        <strong>Rõ ràng</strong>
+            <div class="col-md-10 mx-auto col-lg-5">
+                <div class="card border-0 shadow-lg p-5 rounded-4 bg-white">
+                    <h5 class="fw-bold mb-4 text-center">Các Tính Năng Nổi Bật</h5>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary-subtle text-primary rounded-circle p-2 me-3">📅</div>
+                        <div><strong>Quản lý lịch cá nhân:</strong> Sắp xếp lịch trình khoa học, rõ ràng.</div>
                     </div>
-                    <div class="summary-row">
-                        <span>Task trong từng lịch</span>
-                        <strong>Chi tiết</strong>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success-subtle text-success rounded-circle p-2 me-3">✓</div>
+                        <div><strong>Task chi tiết:</strong> Tách nhỏ lịch thành các task công việc để quản lý.</div>
                     </div>
-                    <div class="summary-row">
-                        <span>Xem theo calendar</span>
-                        <strong>Trực quan</strong>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-info-subtle text-info rounded-circle p-2 me-3">🗓</div>
+                        <div><strong>Giao diện Calendar:</strong> Xem lịch tuần, lịch tháng trực quan sinh động.</div>
                     </div>
-                    <div class="summary-row">
-                        <span>Nhắc lịch qua email</span>
-                        <strong>Tiện lợi</strong>
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning-subtle text-warning rounded-circle p-2 me-3">✉</div>
+                        <div><strong>Nhắc việc qua Email:</strong> Tự động gửi email thông báo khi sắp đến hạn.</div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 }

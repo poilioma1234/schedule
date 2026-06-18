@@ -24,26 +24,15 @@ namespace schedule.Controllers
         {
             var query = BuildUserScheduleQuery(userId);
 
-            if (!string.IsNullOrWhiteSpace(searchString))
-            {
-                var keyword = searchString.Trim().ToLower();
-                query = query.Where(item => item.Title.ToLower().Contains(keyword));
-            }
-
-            if (startDate.HasValue)
-            {
-                query = query.Where(item => item.StartTime.Date == startDate.Value.Date);
-            }
-
-            ViewBag.SearchString = searchString;
-            ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
-            ViewBag.ViewingUserId = userId;
-            ViewBag.ViewingUserEmail = await GetViewingUserEmailAsync(userId);
-
             var items = await query
                 .Include(item => item.Tasks)
-                .OrderBy(item => item.StartTime)
+                .OrderByDescending(item => item.StartTime)
                 .ToListAsync();
+
+            ViewBag.SearchString = searchString ?? string.Empty;
+            ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+            ViewBag.ViewingUserId = userId;
+            ViewBag.ViewingUserEmail = await GetViewingUserEmailAsync(userId);
 
             return View(items);
         }
@@ -99,7 +88,7 @@ namespace schedule.Controllers
                 return Forbid();
             }
 
-            if (!CanEditToday(item))
+            if (!User.IsInRole("Admin") && !CanEditToday(item))
             {
                 TempData["SuccessMessage"] = "Chỉ có lịch trong ngày hiện tại mới được sửa.";
                 return RedirectToAction(nameof(Index));
@@ -135,7 +124,7 @@ namespace schedule.Controllers
                 return Forbid();
             }
 
-            if (!CanEditToday(existingItem))
+            if (!User.IsInRole("Admin") && !CanEditToday(existingItem))
             {
                 TempData["SuccessMessage"] = "Chỉ có lịch trong ngày hiện tại mới được sửa.";
                 return RedirectToAction(nameof(Index));
@@ -222,27 +211,44 @@ namespace schedule.Controllers
                     .ToListAsync();
 
                 var adminEvents = items
-                    .GroupBy(item => new
+                    .GroupBy(item => item.StartTime.Date)
+                    .Select(dayGroup =>
                     {
-                        Date = item.StartTime.Date,
-                        UserEmail = item.CreatedByEmail ?? "Không rõ user",
-                        UserId = item.CreatedByUserId
-                    })
-                    .Select(group => new
-                    {
-                        id = $"summary-{group.Key.UserId}-{group.Key.Date:yyyyMMdd}",
-                        title = group.Count() == 1
-                            ? group.Key.UserEmail
-                            : $"{group.Key.UserEmail} ({group.Count()} lịch)",
-                        start = group.Key.Date.ToString("yyyy-MM-dd"),
-                        allDay = true,
-                        color = "#0f766e",
-                        editable = false,
-                        url = Url.Action("Index", "Schedule", new
+                        var users = dayGroup
+                            .GroupBy(item => new
+                            {
+                                UserEmail = item.CreatedByEmail ?? "Không rõ user",
+                                UserId = item.CreatedByUserId
+                            })
+                            .Select(userGroup => new
+                            {
+                                email = userGroup.Key.UserEmail,
+                                userId = userGroup.Key.UserId,
+                                count = userGroup.Count(),
+                                url = Url.Action("Index", "Schedule", new
+                                {
+                                    userId = userGroup.Key.UserId,
+                                    startDate = dayGroup.Key.ToString("yyyy-MM-dd")
+                                })
+                            })
+                            .OrderBy(user => user.email)
+                            .ToList();
+
+                        return new
                         {
-                            userId = group.Key.UserId,
-                            startDate = group.Key.Date.ToString("yyyy-MM-dd")
-                        })
+                            id = $"summary-{dayGroup.Key:yyyyMMdd}",
+                            title = $"Menu · {users.Count} user",
+                            start = dayGroup.Key.ToString("yyyy-MM-dd"),
+                            allDay = true,
+                            color = "#0f766e",
+                            editable = false,
+                            extendedProps = new
+                            {
+                                date = dayGroup.Key.ToString("dd/MM/yyyy"),
+                                totalSchedules = dayGroup.Count(),
+                                users
+                            }
+                        };
                     })
                     .ToList();
 
@@ -260,6 +266,7 @@ namespace schedule.Controllers
                     isImportant = item.IsImportant,
                     tasks = item.Tasks.Select(task => new
                     {
+                        task.Title,
                         task.Priority,
                         task.Color
                     })
@@ -280,7 +287,11 @@ namespace schedule.Controllers
                     item.end,
                     color = highestPriority != null
                         ? highestPriority.Color
-                        : item.isImportant ? "#dc3545" : "#0d6efd"
+                        : item.isImportant ? "#dc3545" : "#0d6efd",
+                    extendedProps = new
+                    {
+                        tasks = item.tasks.ToList()
+                    }
                 };
             });
 

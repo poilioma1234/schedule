@@ -2,236 +2,510 @@
 @using System.Text.Json
 
 @{
-    ViewData["Title"] = Model.Profile.DisplayName;
+    ViewData["Title"] = Model.Profile.DisplayName ?? "Hồ sơ cá nhân";
     var avatar = string.IsNullOrWhiteSpace(Model.Profile.AvatarPath) ? null : Model.Profile.AvatarPath;
     var cover = string.IsNullOrWhiteSpace(Model.Profile.CoverPath) ? null : Model.Profile.CoverPath;
     var avatarLetter = string.IsNullOrWhiteSpace(Model.Profile.DisplayName)
         ? "U"
         : Model.Profile.DisplayName.Substring(0, 1).ToUpper();
     var completedTaskChart = JsonSerializer.Serialize(Model.CompletedTaskChart);
+    
+    string AwardTone(int rank) => rank switch { 1 => "gold", 2 => "silver", 3 => "bronze", _ => "blue" };
+    string AwardMedal(int rank) => rank switch { 1 => "🥇 Huy Chương Vàng", 2 => "🥈 Huy Chương Bạc", 3 => "🥉 Huy Chương Đồng", _ => "🏅 Huy Hiệu" };
+    string AwardClass(int rank) => rank switch { 1 => "border-warning bg-warning-subtle text-warning-emphasis", 2 => "border-secondary bg-light-subtle text-secondary-emphasis", 3 => "border-danger bg-danger-subtle text-danger-emphasis", _ => "border-primary bg-primary-subtle text-primary" };
 }
 
-@if (TempData["ProfileMessage"] != null)
-{
-    <div class="alert alert-success">@TempData["ProfileMessage"]</div>
-}
-
-@if (Model.IsLocked)
-{
-    <div class="alert alert-danger profile-lock-alert">
-        <strong>User bị khóa</strong>
-        <span>Tài khoản này đang bị admin khóa, nên không tham gia bảng xếp hạng.</span>
-    </div>
-}
-
-<section class="profile-cover" style="@(cover != null ? $"background-image: linear-gradient(rgba(15, 23, 42, .25), rgba(15, 23, 42, .25)), url('{cover}')" : "")">
-    <div class="profile-cover-content">
-        <div class="profile-identity">
-            <div class="profile-avatar">
-                @if (avatar != null)
-                {
-                    <img src="@avatar" alt="Ảnh đại diện của @Model.Profile.DisplayName" />
-                }
-                else
-                {
-                    <span>@avatarLetter</span>
-                }
-            </div>
-            <div>
-                <p class="eyebrow">Hồ sơ người dùng</p>
-                <h1>@Model.Profile.DisplayName</h1>
-                <p>@Model.Email</p>
-                @if (Model.IsPublicProfile)
-                {
-                    <small class="profile-public-url">@Model.PublicProfilePath</small>
-                }
-                @if (Model.IsOwner && !Model.Profile.IsProfilePublic)
-                {
-                    <small class="profile-public-url">Profile đang tắt công khai và không tham gia bảng xếp hạng.</small>
-                }
-            </div>
+<div class="container-fluid px-4 py-4">
+    <!-- Breadcrumb or header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 fw-bold">Hồ Sơ Thành Viên</h1>
+            <p class="text-muted mb-0">Xem tiến trình, huy hiệu danh hiệu và thông tin tài khoản.</p>
         </div>
-
-        @if (Model.IsOwner)
-        {
-            <div class="profile-owner-actions">
-                <a class="btn btn-light" asp-action="Edit">Chỉnh sửa hồ sơ</a>
-                <a class="btn btn-outline-light" href="@Model.PublicProfilePath">Xem trang public</a>
-            </div>
-        }
-    </div>
-</section>
-
-<section class="profile-grid">
-    <div class="profile-main">
-        <div class="panel-section">
-            <h2>Giới thiệu</h2>
-            @if (!string.IsNullOrWhiteSpace(Model.Profile.Bio))
+        <div class="d-flex gap-2">
+            @if (Model.IsOwner)
             {
-                <p class="profile-bio">@Model.Profile.Bio</p>
+                <a class="btn btn-primary shadow-sm" asp-action="Edit">Chỉnh sửa hồ sơ</a>
             }
-            else
+            @if (!Model.IsOwner && User.Identity?.IsAuthenticated == true)
             {
-                <p class="text-muted">Người dùng chưa viết giới thiệu.</p>
+                <button type="button" class="btn btn-outline-danger shadow-sm" id="btnReportUser"
+                        data-bs-toggle="modal" data-bs-target="#reportModal">
+                    <i class="bi bi-flag-fill me-1"></i> Báo cáo
+                </button>
             }
         </div>
+    </div>
 
-        <div class="panel-section">
-            <h2>Hoạt động</h2>
-            <div class="profile-activity-summary">
-                <div>
-                    <span>Tổng task</span>
-                    <strong>@Model.TotalTasks</strong>
-                </div>
-                <div>
-                    <span>Hoàn thành</span>
-                    <strong>@Model.CompletedTaskCount</strong>
-                </div>
-                <div>
-                    <span>Chuỗi hiện tại</span>
-                    <strong>@Model.CurrentStreakDays</strong>
-                </div>
-                <div>
-                    <span>Chuỗi dài nhất</span>
-                    <strong>@Model.LongestStreakDays</strong>
-                </div>
-            </div>
-            <div class="profile-chart-frame">
-                <canvas id="profileCompletedTasksChart"></canvas>
-            </div>
+    @if (TempData["ProfileMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["ProfileMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+    }
 
-        <div class="panel-section">
-            <h2>Liên kết</h2>
-            <div class="profile-links">
-                @if (!string.IsNullOrWhiteSpace(Model.Profile.FacebookUrl))
-                {
-                    <a href="@Model.Profile.FacebookUrl" target="_blank" rel="noopener">Facebook</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.Profile.YouTubeUrl))
-                {
-                    <a href="@Model.Profile.YouTubeUrl" target="_blank" rel="noopener">YouTube</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.Profile.TikTokUrl))
-                {
-                    <a href="@Model.Profile.TikTokUrl" target="_blank" rel="noopener">TikTok</a>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.Profile.WebsiteUrl))
-                {
-                    <a href="@Model.Profile.WebsiteUrl" target="_blank" rel="noopener">Website</a>
-                }
-                @if (string.IsNullOrWhiteSpace(Model.Profile.FacebookUrl)
-                    && string.IsNullOrWhiteSpace(Model.Profile.YouTubeUrl)
-                    && string.IsNullOrWhiteSpace(Model.Profile.TikTokUrl)
-                    && string.IsNullOrWhiteSpace(Model.Profile.WebsiteUrl))
-                {
-                    <span class="text-muted">Chưa có liên kết công khai.</span>
-                }
-            </div>
+    @if (Model.IsLocked)
+    {
+        <div class="alert alert-danger shadow-sm" role="alert">
+            <i class="bi bi-lock-fill me-2"></i>Tài khoản này đang bị khóa và tạm thời ẩn khỏi bảng xếp hạng công khai.
         </div>
+    }
 
-        @if (!string.IsNullOrWhiteSpace(Model.Profile.MusicUrl))
-        {
-            <div class="panel-section">
-                <h2>Nhạc trong profile</h2>
-                @if (Model.ShouldAutoplayMusic && !string.IsNullOrWhiteSpace(Model.YouTubeEmbedUrl))
-                {
-                    <div class="profile-music-player">
-                        <iframe src="@Model.YouTubeEmbedUrl"
-                                title="Nhạc trong profile"
-                                allow="autoplay; encrypted-media; picture-in-picture"
-                                allowfullscreen></iframe>
+    <div class="row g-4">
+        <!-- Left Column: Profile Card, Social & Music -->
+        <div class="col-lg-4">
+            <!-- Cover & Avatar Card -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div style="height: 120px; background: @(cover != null ? $"url('{cover}') center/cover" : "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)");"></div>
+                <div class="card-body text-center position-relative pt-0" style="margin-top: -50px;">
+                    <div class="d-inline-block rounded-circle border border-4 border-white bg-white shadow-sm overflow-hidden mb-3" style="width: 100px; height: 100px;">
+                        @if (avatar != null)
+                        {
+                            <img src="@avatar" style="width: 100%; height: 100%; object-fit: cover;" alt="Avatar" />
+                        }
+                        else
+                        {
+                            <div class="bg-primary-subtle text-primary fw-bold display-6 d-flex align-items-center justify-content-center" style="width: 100%; height: 100%;">
+                                @avatarLetter
+                            </div>
+                        }
                     </div>
-                }
-                else
-                {
-                    <a href="@Model.Profile.MusicUrl" target="_blank" rel="noopener">@Model.Profile.MusicUrl</a>
-                }
-            </div>
-        }
-    </div>
+                    
+                    <h4 class="fw-bold text-dark mb-1">@Model.Profile.DisplayName</h4>
+                    <p class="text-muted small mb-3">@Model.Email</p>
 
-    <aside class="profile-side">
-        <div class="profile-stat-card">
-            <span>Tổng lịch</span>
-            <strong>@Model.TotalSchedules</strong>
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <span class="badge bg-primary-subtle text-primary px-3 py-2">
+                            @(Model.Profile.IsProfilePublic ? "Hồ sơ công khai" : "Riêng tư")
+                        </span>
+                        <span class="badge @(Model.IsLocked ? "bg-danger-subtle text-danger" : "bg-success-subtle text-success") px-3 py-2">
+                            @(Model.IsLocked ? "Bị khóa" : "Hoạt động")
+                        </span>
+                    </div>
+
+                    <div class="text-muted small border-top pt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Ngày tham gia:</span>
+                            <strong class="text-dark">@Model.Profile.CreatedAt.ToString("dd/MM/yyyy")</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Múi giờ:</span>
+                            <strong class="text-dark">GMT+7 (Hà Nội)</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Social Links Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <h5 class="fw-bold text-dark mb-3">Mạng Xã Hội</h5>
+                <div class="d-grid gap-2">
+                    @if (!string.IsNullOrWhiteSpace(Model.Profile.FacebookUrl))
+                    {
+                        <a href="@Model.Profile.FacebookUrl" target="_blank" rel="noopener" class="btn btn-outline-primary text-start px-3 py-2 rounded-3 border-light-subtle hover-bg-light">
+                            <span class="me-2">📘</span> Facebook
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Profile.YouTubeUrl))
+                    {
+                        <a href="@Model.Profile.YouTubeUrl" target="_blank" rel="noopener" class="btn btn-outline-danger text-start px-3 py-2 rounded-3 border-light-subtle hover-bg-light">
+                            <span class="me-2">🔴</span> YouTube Channel
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Profile.TikTokUrl))
+                    {
+                        <a href="@Model.Profile.TikTokUrl" target="_blank" rel="noopener" class="btn btn-outline-dark text-start px-3 py-2 rounded-3 border-light-subtle hover-bg-light">
+                            <span class="me-2">⚫</span> TikTok
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Profile.WebsiteUrl))
+                    {
+                        <a href="@Model.Profile.WebsiteUrl" target="_blank" rel="noopener" class="btn btn-outline-info text-start px-3 py-2 rounded-3 border-light-subtle hover-bg-light text-dark">
+                            <span class="me-2">🌐</span> Website cá nhân
+                        </a>
+                    }
+                    @if (string.IsNullOrWhiteSpace(Model.Profile.FacebookUrl)
+                        && string.IsNullOrWhiteSpace(Model.Profile.YouTubeUrl)
+                        && string.IsNullOrWhiteSpace(Model.Profile.TikTokUrl)
+                        && string.IsNullOrWhiteSpace(Model.Profile.WebsiteUrl))
+                    {
+                        <span class="text-muted text-center py-2 small">Thành viên chưa liên kết mạng xã hội.</span>
+                    }
+                </div>
+            </div>
+
+            <!-- YouTube Embedded Player Card -->
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.MusicUrl))
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <h5 class="fw-bold text-dark mb-3">Âm Nhạc Yêu Thích</h5>
+                    @if (!string.IsNullOrWhiteSpace(Model.YouTubeEmbedUrl))
+                    {
+                        <div class="ratio ratio-16x9 rounded-3 overflow-hidden shadow-sm">
+                            <iframe src="@Model.YouTubeEmbedUrl" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                        </div>
+                    }
+                    else
+                    {
+                        <a href="@Model.Profile.MusicUrl" target="_blank" rel="noopener" class="btn btn-primary w-100">
+                            🎧 Nghe Nhạc (Link Ngoài)
+                        </a>
+                    }
+                </div>
+            }
         </div>
-        <div class="profile-stat-card">
-            <span>Lịch hôm nay</span>
-            <strong>@Model.TodaySchedules</strong>
+
+        <!-- Right Column: Stats, Tabs and Badges -->
+        <div class="col-lg-8">
+            <!-- 4-Stat panel -->
+            <div class="row g-3 mb-4">
+                <!-- Rank -->
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-3 text-center p-3 h-100 bg-white">
+                        <span class="text-muted small d-block mb-1">Xếp Hạng</span>
+                        <h3 class="fw-bold mb-0 text-primary">
+                            @(Model.RankLabel.StartsWith("#") ? Model.RankLabel.Split(' ')[0] : "-")
+                        </h3>
+                        <small class="text-muted small">Tháng này</small>
+                    </div>
+                </div>
+                <!-- Completed tasks -->
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-3 text-center p-3 h-100 bg-white">
+                        <span class="text-muted small d-block mb-1">Task Xong</span>
+                        <h3 class="fw-bold mb-0 text-success">@Model.CompletedTaskCount</h3>
+                        <small class="text-muted small">Nhiệm vụ</small>
+                    </div>
+                </div>
+                <!-- Current Streak -->
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-3 text-center p-3 h-100 bg-white">
+                        <span class="text-muted small d-block mb-1">Chuỗi Streak</span>
+                        <h3 class="fw-bold mb-0 text-danger">🔥 @Model.CurrentStreakDays ngày</h3>
+                        <small class="text-muted small">Kỷ lục: @Model.LongestStreakDays ngày</small>
+                    </div>
+                </div>
+                <!-- Total Tasks -->
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm rounded-3 text-center p-3 h-100 bg-white">
+                        <span class="text-muted small d-block mb-1">Tổng Task</span>
+                        <h3 class="fw-bold mb-0 text-dark">@Model.TotalTasks</h3>
+                        <small class="text-muted small">Đã giao</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab System -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-bottom border-light p-0">
+                    <ul class="nav nav-tabs card-header-tabs border-bottom-0 mx-3 mt-2" id="profileTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold border-0 py-3" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">Tổng Quan Hoạt Động</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold border-0 py-3" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab" aria-controls="awards" aria-selected="false">Huy Chương Danh Hiệu</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold border-0 py-3" id="bio-tab" data-bs-toggle="tab" data-bs-target="#bio" type="button" role="tab" aria-controls="bio" aria-selected="false">Tiểu Sử / Giới Thiệu</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-4">
+                    <div class="tab-content" id="profileTabContent">
+                        <!-- Tab 1: Overview Chart & Detailed Stats -->
+                        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                            <h5 class="fw-bold mb-3 text-dark">Biểu Đồ Hoàn Thành Nhiệm Vụ (30 Ngày)</h5>
+                            <div class="chart-container mb-4" style="position: relative; height:260px; width:100%">
+                                <canvas id="profileCompletedTasksChart"></canvas>
+                            </div>
+                            
+                            <h5 class="fw-bold mb-3 mt-4 text-dark">Thống Kê Chi Tiết Lịch Trình</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 bg-light-subtle">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Tổng số lịch trình:</span>
+                                            <strong class="text-dark">@Model.TotalSchedules</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Lịch trình hôm nay:</span>
+                                            <strong class="text-dark">@Model.TodaySchedules</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 bg-light-subtle">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Lịch trình quan trọng:</span>
+                                            <strong class="text-dark">@Model.ImportantSchedules</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Đang & sắp diễn ra:</span>
+                                            <strong class="text-dark">@Model.ActiveOrUpcomingSchedules</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: permanent Leaderboard Awards -->
+                        <div class="tab-pane fade" id="awards" role="tabpanel" aria-labelledby="awards-tab">
+                            <h5 class="fw-bold mb-3 text-dark">Bảng Vinh Danh Huy Chương Tích Lũy</h5>
+                            <p class="text-muted small mb-4">Danh hiệu này được lưu vĩnh viễn trong hồ sơ của bạn và không bị reset khi sang tháng mới.</p>
+                            
+                            @if (Model.LeaderboardAwards.Any())
+                            {
+                                <div class="row g-3">
+                                    @foreach (var award in Model.LeaderboardAwards)
+                                    {
+                                        <div class="col-md-6">
+                                            <div class="card border border-2 rounded-3 shadow-sm @AwardClass(award.Rank) h-100">
+                                                <div class="card-body p-3">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span class="fw-bold">Tháng @award.PeriodStart.ToString("MM/yyyy")</span>
+                                                        <span class="badge bg-white text-dark shadow-sm">Top #@award.Rank</span>
+                                                    </div>
+                                                    <h6 class="fw-bold mb-2">@AwardMedal(award.Rank)</h6>
+                                                    <div class="small opacity-90 border-top pt-2 mt-2">
+                                                        <div>Điểm tích lũy: <strong>@award.Score</strong></div>
+                                                        <div>Task hoàn thành: <strong>@award.CompletedTaskCount</strong> · Đúng hạn: <strong>@award.OnTimeTaskCount</strong></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-5 text-muted">
+                                    <p class="fs-2 mb-2">🎖️</p>
+                                    <h5>Chưa đạt huy chương tháng nào</h5>
+                                    <p class="small">Lọt vào top 3 người dẫn đầu trong bảng xếp hạng tháng khi kết thúc để được vinh danh vĩnh viễn tại đây.</p>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Tab 3: Bio -->
+                        <div class="tab-pane fade" id="bio" role="tabpanel" aria-labelledby="bio-tab">
+                            <h5 class="fw-bold mb-3 text-dark">Tiểu Sử Thành Viên</h5>
+                            @if (!string.IsNullOrWhiteSpace(Model.Profile.Bio))
+                            {
+                                <div class="p-4 bg-light rounded-3 text-dark opacity-90 border-start border-primary border-3" style="line-height: 1.6; white-space: pre-wrap;">@Model.Profile.Bio</div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-5 text-muted">
+                                    <p class="fs-4 mb-2">✍️</p>
+                                    <p class="small mb-0">Thành viên này chưa viết lời giới thiệu.</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Latest Award Highlight if exists -->
+            @if (Model.LatestAward != null)
+            {
+                <div class="card border border-2 @AwardClass(Model.LatestAward.Rank) rounded-4 p-4 shadow-sm mb-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge bg-white text-dark shadow-sm mb-2">Huy hiệu mới nhất</span>
+                            <h5 class="fw-bold mb-1">Top @Model.LatestAward.Rank Tháng @Model.LatestAward.PeriodStart.ToString("MM/yyyy")</h5>
+                            <p class="mb-0 small opacity-90">@Model.LatestAward.Score điểm · hoàn thành @Model.LatestAward.CompletedTaskCount việc · Đạt ngày @Model.LatestAward.AwardedAt.ToString("dd/MM/yyyy")</p>
+                        </div>
+                        <div class="fs-1">
+                            @(Model.LatestAward.Rank == 1 ? "🥇" : Model.LatestAward.Rank == 2 ? "🥈" : "🥉")
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
-        <div class="profile-stat-card">
-            <span>Lịch quan trọng</span>
-            <strong>@Model.ImportantSchedules</strong>
-        </div>
-        <div class="profile-stat-card">
-            <span>Đang/sắp diễn ra</span>
-            <strong>@Model.ActiveOrUpcomingSchedules</strong>
-        </div>
-        <div class="profile-stat-card">
-            <span>Tổng task</span>
-            <strong>@Model.TotalTasks</strong>
-        </div>
-        <div class="profile-stat-card muted">
-            <span>Task hoàn thành</span>
-            <strong>@Model.CompletedTaskCount</strong>
-            <small>Tính từ các task đã đánh dấu hoàn thành.</small>
-        </div>
-        <div class="profile-stat-card muted">
-            <span>Task quá hạn</span>
-            <strong>@Model.OverdueTaskCount</strong>
-        </div>
-        <div class="profile-stat-card muted">
-            <span>Chuỗi hiện tại</span>
-            <strong>@Model.CurrentStreakDays ngày</strong>
-        </div>
-        <div class="profile-stat-card muted">
-            <span>Chuỗi dài nhất</span>
-            <strong>@Model.LongestStreakDays ngày</strong>
-        </div>
-        <div class="profile-stat-card muted">
-            <span>Thứ hạng</span>
-            <strong>@Model.RankLabel</strong>
-        </div>
-    </aside>
-</section>
+    </div>
+</div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const profileCompletedTaskChart = @Html.Raw(completedTaskChart);
-        const profileCanvas = document.getElementById('profileCompletedTasksChart');
+        document.addEventListener('DOMContentLoaded', function () {
+            const profileCompletedTaskChart = @Html.Raw(completedTaskChart);
+            const profileCanvas = document.getElementById('profileCompletedTasksChart');
 
-        if (profileCanvas && window.Chart) {
-            new Chart(profileCanvas, {
-                type: 'line',
-                data: {
-                    labels: profileCompletedTaskChart.Labels,
-                    datasets: [{
-                        label: profileCompletedTaskChart.Title,
-                        data: profileCompletedTaskChart.Values,
-                        borderColor: profileCompletedTaskChart.Color,
-                        backgroundColor: `${profileCompletedTaskChart.Color}22`,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.35
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
+            if (profileCanvas && window.Chart) {
+                new Chart(profileCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: profileCompletedTaskChart.Labels,
+                        datasets: [{
+                            label: profileCompletedTaskChart.Title,
+                            data: profileCompletedTaskChart.Values,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.35,
+                            pointBackgroundColor: '#4f46e5',
+                            pointHoverRadius: 6
+                        }]
                     },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: {
-                            beginAtZero: true,
-                            ticks: { precision: 0 }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                padding: 12,
+                                cornerRadius: 8
+                            }
+                        },
+                        scales: {
+                            x: { 
+                                grid: { display: false },
+                                ticks: { color: '#858796' }
+                            },
+                            y: { 
+                                beginAtZero: true, 
+                                ticks: { 
+                                    precision: 0,
+                                    color: '#858796'
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
+        });
+    </script>
+}
+
+@if (!Model.IsOwner && User.Identity?.IsAuthenticated == true)
+{
+    <!-- Report Modal -->
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0" style="background: linear-gradient(135deg,#dc3545,#b02a37); border-radius: 1rem 1rem 0 0;">
+                    <div class="d-flex align-items-center gap-2 text-white">
+                        <i class="bi bi-flag-fill fs-5"></i>
+                        <h5 class="modal-title fw-bold mb-0" id="reportModalLabel">Báo cáo người dùng</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-4">
+                        Báo cáo sẽ được gửi đến quản trị viên để xem xét. 
+                        Hành động giả mạo hoặc lạm dụng tính năng báo cáo có thể bị xử lý.
+                    </p>
+
+                    <div id="reportAlert" class="alert d-none mb-3" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Danh mục báo cáo <span class="text-danger">*</span></label>
+                        <select class="form-select" id="reportCategory">
+                            <option value="">-- Chọn lý do --</option>
+                            <option value="harassment">🚫 Quấy rối / Ngôn từ không phù hợp</option>
+                            <option value="spam">📢 Spam / Quảng cáo</option>
+                            <option value="fake">🎭 Giả mạo danh tính</option>
+                            <option value="inappropriate">⚠️ Nội dung không phù hợp</option>
+                            <option value="other">📝 Lý do khác</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mô tả chi tiết <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="reportReason" rows="4"
+                                  placeholder="Mô tả cụ thể hành vi vi phạm bạn đã gặp phải..."></textarea>
+                        <div class="form-text">Tối đa 1000 ký tự. Nội dung càng chi tiết, admin xử lý càng nhanh.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-danger fw-semibold px-4" id="submitReportBtn">
+                        <span id="reportBtnText"><i class="bi bi-flag-fill me-1"></i> Gửi báo cáo</span>
+                        <span id="reportBtnSpinner" class="d-none spinner-border spinner-border-sm ms-1"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('submitReportBtn')?.addEventListener('click', async function() {
+        const category = document.getElementById('reportCategory').value;
+        const reason = document.getElementById('reportReason').value.trim();
+        const alertEl = document.getElementById('reportAlert');
+        const btn = this;
+
+        // Validate
+        if (!category) {
+            alertEl.className = 'alert alert-warning mb-3';
+            alertEl.textContent = 'Vui lòng chọn danh mục báo cáo.';
+            alertEl.classList.remove('d-none');
+            return;
         }
+        if (reason.length < 10) {
+            alertEl.className = 'alert alert-warning mb-3';
+            alertEl.textContent = 'Mô tả cần ít nhất 10 ký tự.';
+            alertEl.classList.remove('d-none');
+            return;
+        }
+
+        // Show loading
+        btn.disabled = true;
+        document.getElementById('reportBtnText').classList.add('d-none');
+        document.getElementById('reportBtnSpinner').classList.remove('d-none');
+        alertEl.classList.add('d-none');
+
+        try {
+            // Get antiforgery token
+            const tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenEl ? tokenEl.value : '';
+
+            const form = new FormData();
+            form.append('reportedUserId', '@Model.UserId');
+            form.append('category', category);
+            form.append('reason', reason);
+            form.append('__RequestVerificationToken', token);
+
+            const resp = await fetch('/Profile/Report', { method: 'POST', body: form });
+            const data = await resp.json();
+
+            if (resp.ok && data.success) {
+                alertEl.className = 'alert alert-success mb-3';
+                alertEl.textContent = data.message;
+                alertEl.classList.remove('d-none');
+                document.getElementById('reportCategory').value = '';
+                document.getElementById('reportReason').value = '';
+                setTimeout(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+                    modal?.hide();
+                }, 2500);
+            } else {
+                alertEl.className = 'alert alert-danger mb-3';
+                alertEl.textContent = data.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+                alertEl.classList.remove('d-none');
+            }
+        } catch {
+            alertEl.className = 'alert alert-danger mb-3';
+            alertEl.textContent = 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+            alertEl.classList.remove('d-none');
+        } finally {
+            btn.disabled = false;
+            document.getElementById('reportBtnText').classList.remove('d-none');
+            document.getElementById('reportBtnSpinner').classList.add('d-none');
+        }
+    });
+
+    // Reset modal on close
+    document.getElementById('reportModal')?.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('reportAlert').classList.add('d-none');
+        document.getElementById('reportCategory').value = '';
+        document.getElementById('reportReason').value = '';
+    });
     </script>
 }

@@ -223,7 +223,7 @@ dotnet run --launch-profile http
 Mở trình duyệt:
 
 ```text
-http://localhost:5299
+http://localhost:5399
 ```
 
 ## Cấu Hình SMTP Gmail

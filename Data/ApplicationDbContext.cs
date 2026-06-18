@@ -13,6 +13,8 @@ namespace schedule.Data
         public DbSet<ScheduleItem> ScheduleItems => Set<ScheduleItem>();
         public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
         public DbSet<TaskItem> TaskItems => Set<TaskItem>();
+        public DbSet<LeaderboardAward> LeaderboardAwards => Set<LeaderboardAward>();
+        public DbSet<UserReport> UserReports => Set<UserReport>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -36,6 +38,14 @@ namespace schedule.Data
                 .WithMany(schedule => schedule.Tasks)
                 .HasForeignKey(task => task.ScheduleItemId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<LeaderboardAward>()
+                .HasIndex(award => new { award.Period, award.PeriodStart, award.Rank })
+                .IsUnique();
+
+            builder.Entity<LeaderboardAward>()
+                .HasIndex(award => new { award.UserId, award.Period, award.PeriodStart })
+                .IsUnique();
         }
     }
 }

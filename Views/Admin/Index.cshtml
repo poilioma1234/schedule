@@ -1,199 +1,1370 @@
 @model schedule.ViewModels.AdminDashboardViewModel
+@using System.Globalization
+@using schedule.ViewModels
 
 @{
-    ViewData["Title"] = "Quản trị";
-}
+    Layout = "_Layout";
+    ViewData["Title"] = "Admin Dashboard";
 
-<section class="admin-hero">
-    <div>
-        <p class="eyebrow">Admin Dashboard</p>
-        <h1>Quản lý người dùng</h1>
-        <p>Theo dõi tài khoản, phân quyền, trạng thái khóa, lịch trình và task của từng user trong hệ thống.</p>
-    </div>
-    <a class="btn btn-light" asp-controller="Schedule" asp-action="Index">Xem toàn bộ lịch</a>
-</section>
-
-@if (TempData["AdminMessage"] != null)
-{
-    <div class="alert alert-success">@TempData["AdminMessage"]</div>
-}
-
-@if (TempData["AdminError"] != null)
-{
-    <div class="alert alert-danger">@TempData["AdminError"]</div>
-}
-
-<section class="admin-stats">
-    <div class="stat-card">
-        <span>Tổng user</span>
-        <strong>@Model.TotalUsers</strong>
-    </div>
-    <div class="stat-card">
-        <span>Đang hoạt động</span>
-        <strong>@Model.ActiveUsers</strong>
-    </div>
-    <div class="stat-card">
-        <span>Bị khóa</span>
-        <strong>@Model.LockedUsers</strong>
-    </div>
-    <div class="stat-card">
-        <span>Admin</span>
-        <strong>@Model.AdminUsers</strong>
-    </div>
-    <div class="stat-card">
-        <span>Tổng lịch</span>
-        <strong>@Model.TotalSchedules</strong>
-    </div>
-    <div class="stat-card">
-        <span>Lịch hôm nay</span>
-        <strong>@Model.TodaySchedules</strong>
-    </div>
-</section>
-
-<section class="admin-panel">
-    <form method="get" class="admin-toolbar">
-        <div>
-            <label class="form-label">Tìm user</label>
-            <input class="form-control" name="searchString" value="@Model.SearchString" placeholder="Nhập email..." />
-        </div>
-        <div>
-            <label class="form-label">Bộ lọc</label>
-            <select class="form-select" name="statusFilter">
-                <option value="all" selected="@(Model.StatusFilter == "all")">Tất cả</option>
-                <option value="user" selected="@(Model.StatusFilter == "user")">User thường</option>
-                <option value="admin" selected="@(Model.StatusFilter == "admin")">Admin</option>
-                <option value="locked" selected="@(Model.StatusFilter == "locked")">Đã khóa</option>
-            </select>
-        </div>
-        <div class="align-self-end d-flex gap-2">
-            <button class="btn btn-primary" type="submit">Lọc</button>
-            <a class="btn btn-outline-secondary" asp-action="Index">Đặt lại</a>
-        </div>
-    </form>
-
-    <div class="table-responsive">
-        <table class="table align-middle admin-table">
-            <thead>
-                <tr>
-                    <th>Người dùng</th>
-                    <th>Vai trò</th>
-                    <th>Trạng thái</th>
-                    <th>Lịch</th>
-                    <th>Lịch đang/sắp tới</th>
-                    <th>Task</th>
-                    <th class="text-end">Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in Model.Users)
-                {
-                    <tr>
-                        <td>
-                            <div class="user-cell">
-                                @if (!string.IsNullOrWhiteSpace(user.AvatarPath))
-                                {
-                                    <img class="avatar-fallback avatar-image" src="@user.AvatarPath" alt="Ảnh đại diện của @user.Email" />
-                                }
-                                else
-                                {
-                                    <div class="avatar-fallback">@((string.IsNullOrWhiteSpace(user.Email) ? "U" : user.Email.Substring(0, 1)).ToUpper())</div>
-                                }
-                                <div>
-                                    <strong>@user.Email</strong>
-                                    <span>ID: @(user.Id.Length > 8 ? user.Id.Substring(0, 8) : user.Id)</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            @if (user.IsAdmin)
-                            {
-                                <span class="badge rounded-pill bg-primary">Admin</span>
-                            }
-                            else
-                            {
-                                <span class="badge rounded-pill bg-secondary">User</span>
-                            }
-                        </td>
-                        <td>
-                            @if (user.IsLocked)
-                            {
-                                <span class="badge rounded-pill bg-danger">Đã khóa</span>
-                            }
-                            else
-                            {
-                                <span class="badge rounded-pill bg-success">Hoạt động</span>
-                            }
-                        </td>
-                        <td>
-                            <strong>@user.ScheduleCount</strong>
-                            <div class="text-muted small">Hôm nay: @user.TodayScheduleCount</div>
-                        </td>
-                        <td>
-                            <strong>@user.ActiveOrUpcomingScheduleCount</strong>
-                            <div class="text-muted small">
-                                @(user.LastScheduleAt.HasValue ? $"Tạo lịch gần nhất: {user.LastScheduleAt:dd/MM/yyyy HH:mm}" : "Chưa có lịch")
-                            </div>
-                        </td>
-                        <td>
-                            <strong>@user.CompletedTaskCount/@user.TotalTaskCount</strong>
-                            <div class="text-muted small">Hoàn thành / tổng task</div>
-                            @if (user.OverdueTaskCount > 0)
-                            {
-                                <div class="text-danger small">Quá hạn: @user.OverdueTaskCount</div>
-                            }
-                        </td>
-                        <td class="text-end">
-                            <div class="admin-actions">
-                                <a class="btn btn-sm btn-outline-info" asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id">Xem lịch</a>
-                                <a class="btn btn-sm btn-outline-primary" asp-controller="Profile" asp-action="Details" asp-route-id="@user.Id">Hồ sơ</a>
-
-                                @if (user.IsAdmin)
-                                {
-                                    <form asp-action="RemoveAdmin" method="post">
-                                        <input type="hidden" name="id" value="@user.Id" />
-                                        <button class="btn btn-sm btn-outline-warning" type="submit">Hạ User</button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form asp-action="MakeAdmin" method="post">
-                                        <input type="hidden" name="id" value="@user.Id" />
-                                        <button class="btn btn-sm btn-outline-warning" type="submit">Gán Admin</button>
-                                    </form>
-                                }
-
-                                @if (user.IsLocked)
-                                {
-                                    <form asp-action="Unlock" method="post">
-                                        <input type="hidden" name="id" value="@user.Id" />
-                                        <button class="btn btn-sm btn-outline-success" type="submit">Mở khóa</button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form asp-action="Lock" method="post">
-                                        <input type="hidden" name="id" value="@user.Id" />
-                                        <button class="btn btn-sm btn-outline-secondary" type="submit">Khóa</button>
-                                    </form>
-                                }
-
-                                <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa user này và toàn bộ lịch của họ?');">
-                                    <input type="hidden" name="id" value="@user.Id" />
-                                    <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    @if (!Model.Users.Any())
+    var activeRate = Model.TotalUsers == 0 ? 0 : (int)Math.Round(Model.ActiveUsers * 100.0 / Model.TotalUsers);
+    var completedRate = Model.TotalTasks == 0 ? 0 : (int)Math.Round(Model.CompletedTasks * 100.0 / Model.TotalTasks);
+    
+    string IsActive(string section) => Model.ActiveSection == section ? "active" : "";
+    string SectionTitle() => Model.ActiveSection switch
     {
-        <div class="empty-state mt-3">
-            <h3>Không tìm thấy user</h3>
-            <p>Thử đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.</p>
+        "users" => "Quản lý Người dùng",
+        "schedules" => "Quản lý Lịch trình",
+        "tasks" => "Quản lý Tasks",
+        "activity" => "Nhật ký Hoạt động",
+        "notifications" => "Thông báo hệ thống",
+        "reports" => "Báo cáo & Thống kê",
+        "settings" => "Cài đặt hệ thống",
+        _ => "Tổng quan Hệ thống"
+    };
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header Title -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 fw-bold">@SectionTitle()</h1>
+            <p class="text-muted mb-0">Hệ thống quản trị & điều hành công việc trực tuyến.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary shadow-sm" asp-controller="Home" asp-action="Index">Trang chủ User</a>
+            @if (Model.ActiveSection == "overview")
+            {
+                <button class="btn btn-primary shadow-sm" onclick="location.reload();">Tải lại dữ liệu</button>
+            }
+        </div>
+    </div>
+
+    @if (TempData["AdminMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["AdminMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
-</section>
+
+    @if (TempData["AdminError"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["AdminError"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.ActiveSection == "overview")
+    {
+        <!-- KPI Card Grid -->
+        <div class="row g-4 mb-4">
+            <!-- Card 1: Today's Tasks -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100 kpi-card-premium border-start border-primary border-4 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="text-uppercase font-monospace text-muted small fw-bold" id="kpiLabel1">Task Hôm Nay</span>
+                            <div class="kpi-icon-wrap bg-primary-subtle text-primary">
+                                <i class="fs-4">✓</i>
+                            </div>
+                        </div>
+                        <h2 class="display-6 fw-bold mb-1" id="kpiVal1">@Model.TodayTasks</h2>
+                        <span class="text-success small fw-semibold" id="kpiSub1">
+                            @Model.TodayTasksChange
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Overdue Tasks -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100 kpi-card-premium border-start border-danger border-4 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="text-uppercase font-monospace text-muted small fw-bold" id="kpiLabel2">Task Quá Hạn</span>
+                            <div class="kpi-icon-wrap bg-danger-subtle text-danger">
+                                <i class="fs-4">!</i>
+                            </div>
+                        </div>
+                        <h2 class="display-6 fw-bold mb-1 text-danger" id="kpiVal2">@Model.OverdueTasks</h2>
+                        <span class="small fw-semibold @(Model.OverdueTasksChange.Contains("↓") ? "text-success" : "text-danger")" id="kpiSub2">
+                            @Model.OverdueTasksChange
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Task Completion Rate -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100 kpi-card-premium border-start border-success border-4 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="text-uppercase font-monospace text-muted small fw-bold" id="kpiLabel3">Tỷ lệ hoàn thành</span>
+                            <div class="kpi-icon-wrap bg-success-subtle text-success">
+                                <i class="fs-4">%</i>
+                            </div>
+                        </div>
+                        <h2 class="display-6 fw-bold mb-1 text-success" id="kpiVal3">@completedRate%</h2>
+                        <span class="text-success small fw-semibold" id="kpiSub3">
+                            @Model.CompletedRateChange
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Total Schedules & Users -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100 kpi-card-premium border-start border-warning border-4 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="text-uppercase font-monospace text-muted small fw-bold" id="kpiLabel4">Lịch Trình Hôm Nay</span>
+                            <div class="kpi-icon-wrap bg-warning-subtle text-warning">
+                                <i class="fs-4">📅</i>
+                            </div>
+                        </div>
+                        <h2 class="display-6 fw-bold mb-1" id="kpiVal4">@Model.TodaySchedules</h2>
+                        <span class="text-muted small" id="kpiSub4">
+                            Tổng số: <strong class="text-dark" id="kpiTotalSched">@Model.TotalSchedules</strong> lịch trình
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Analytics & Details Grid -->
+        <div class="row g-4 mb-4">
+            <div class="col-xl-8 col-lg-7">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                            <div>
+                                <h5 class="m-0 fw-bold text-gray-800" id="chartTitle">Biểu Đồ Hoạt Động (7 Ngày)</h5>
+                                <small class="text-muted" id="chartSubtitle">7 ngày gần nhất</small>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <select class="form-select form-select-sm" id="chartRangePreset" style="width:auto;">
+                                    <option value="7">7 ngày qua</option>
+									<option value="14">14 ngày qua</option>
+                                    <option value="30">30 ngày qua</option>
+                                    <option value="custom">Tùy chỉnh...</option>
+                                </select>
+                                <div id="chartCustomRange" class="d-none d-flex gap-1 align-items-center">
+                                    <input type="date" class="form-control form-control-sm" id="chartFromDate" style="width:135px;" />
+                                    <span class="text-muted small">—</span>
+                                    <input type="date" class="form-control form-control-sm" id="chartToDate" style="width:135px;" />
+                                    <button class="btn btn-sm btn-primary" id="chartApplyBtn">Vẽ</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="chart-container" style="position: relative; height:320px; width:100%">
+                            <canvas id="adminActivityChart"></canvas>
+                        </div>
+                        <div class="row mt-3 text-center g-2 small font-monospace text-muted">
+                            <div class="col-4">
+                                <span class="d-inline-block rounded-circle bg-primary me-1" style="width:10px; height:10px;"></span> Task tạo mới: @Model.CreatedTasks7DaysChange
+                            </div>
+                            <div class="col-4">
+                                <span class="d-inline-block rounded-circle bg-success me-1" style="width:10px; height:10px;"></span> Task hoàn thành: @Model.CompletedTasks7DaysChange
+                            </div>
+                            <div class="col-4">
+                                <span class="d-inline-block rounded-circle bg-danger me-1" style="width:10px; height:10px;"></span> Task quá hạn: @Model.OverdueTasks7DaysChange
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions & General Stats -->
+            <div class="col-xl-4 col-lg-5">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="m-0 fw-bold text-gray-800">Thao Tác Nhanh</h5>
+                    </div>
+                    <div class="card-body p-4 pt-2">
+                        <div class="list-group list-group-flush">
+                            <a asp-controller="Admin" asp-action="Index" asp-route-section="users" class="list-group-item list-group-item-action d-flex align-items-center py-3 border-0 rounded admin-quick-action mb-2">
+                                <span class="badge bg-primary-subtle text-primary p-2 me-3 fs-5">👤</span>
+                                <div>
+                                    <h6 class="mb-0 fw-semibold text-dark">Quản lý người dùng</h6>
+                                    <small class="text-muted d-block">Phân quyền, khóa tài khoản</small>
+                                </div>
+                            </a>
+                            <a asp-controller="Admin" asp-action="Index" asp-route-section="schedules" class="list-group-item list-group-item-action d-flex align-items-center py-3 border-0 rounded admin-quick-action mb-2">
+                                <span class="badge bg-info-subtle text-info p-2 me-3 fs-5">📅</span>
+                                <div>
+                                    <h6 class="mb-0 fw-semibold text-dark">Quản lý lịch trình</h6>
+                                    <small class="text-muted d-block">Xem và sửa lịch toàn hệ thống</small>
+                                </div>
+                            </a>
+                            <a asp-controller="Admin" asp-action="Index" asp-route-section="tasks" class="list-group-item list-group-item-action d-flex align-items-center py-3 border-0 rounded admin-quick-action mb-2">
+                                <span class="badge bg-success-subtle text-success p-2 me-3 fs-5">✓</span>
+                                <div>
+                                    <h6 class="mb-0 fw-semibold text-dark">Quản lý Task vụ</h6>
+                                    <small class="text-muted d-block">Theo dõi tiến độ, deadline</small>
+                                </div>
+                            </a>
+                            <a asp-controller="Admin" asp-action="Index" asp-route-section="reports" class="list-group-item list-group-item-action d-flex align-items-center py-3 border-0 rounded admin-quick-action">
+                                <span class="badge bg-warning-subtle text-warning p-2 me-3 fs-5">📄</span>
+                                <div>
+                                    <h6 class="mb-0 fw-semibold text-dark">Báo cáo & Thống kê</h6>
+                                    <small class="text-muted d-block">Xuất PDF lịch trình, thống kê</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Overdue/Urgent tasks list (Attention tasks) -->
+            <div class="col-xl-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-gray-800">Task Cần Chú Ý</h5>
+                        <span class="badge bg-danger text-white">Khẩn cấp</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @if (!Model.OverdueTaskItems.Any())
+                            {
+                                <div class="p-4 text-center text-muted">Không có task nào cần chú ý gấp.</div>
+                            }
+                            else
+                            {
+                                @foreach (var task in Model.OverdueTaskItems)
+                                {
+                                    <div class="list-group-item p-3 border-0 border-bottom d-flex justify-content-between align-items-center admin-quick-action">
+                                        <div>
+                                            <h6 class="mb-1 fw-bold admin-quick-title">@task.Title</h6>
+                                            <small class="admin-quick-sub">Tạo bởi: @task.OwnerEmail · Hạn chót: @task.Deadline.ToString("dd/MM/yyyy HH:mm")</small>
+                                        </div>
+                                        <div>
+                                            <span class="badge @(task.IsOverdue ? "bg-danger" : "bg-warning text-dark") fw-semibold py-2 px-3">
+                                                @task.AttentionText
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent activity feed -->
+            <div class="col-xl-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold text-gray-800">Hoạt Động Gần Đây</h5>
+                        <a asp-controller="Admin" asp-action="Index" asp-route-section="activity" class="small text-decoration-none">Xem thêm</a>
+                    </div>
+                    <div class="card-body p-4 pt-0">
+                        <div class="timeline-activity">
+                            @if (!Model.RecentActivities.Any())
+                            {
+                                <div class="text-center text-muted py-4">Chưa có lịch sử hoạt động.</div>
+                            }
+                            else
+                            {
+                                @foreach (var act in Model.RecentActivities)
+                                {
+                                    <div class="timeline-activity-item d-flex mb-3 position-relative">
+                                        <div class="timeline-indicator-dot bg-@act.Tone shadow-sm"></div>
+                                        <div class="timeline-activity-content ms-3 flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <strong class="text-dark small">@act.Title</strong>
+                                                <small class="text-muted font-monospace">@act.TimeElapsed</small>
+                                            </div>
+                                            <p class="text-muted small mb-0">@act.Detail</p>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.ActiveSection == "users")
+    {
+        <!-- Users Management View -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="m-0 fw-bold text-gray-800">Danh Sách Thành Viên</h5>
+                <div class="d-flex gap-2">
+                    <select class="form-select form-select-sm w-auto" id="userStatusFilter">
+                        <option value="all">Tất cả tài khoản</option>
+                        <option value="user">User thường</option>
+                        <option value="admin">Admin</option>
+                        <option value="locked">Bị khóa</option>
+                    </select>
+                    <a class="btn btn-primary btn-sm shadow-sm" asp-area="Identity" asp-page="/Account/Register">Tạo người dùng mới</a>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle admin-users-table w-100" id="usersTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Người dùng</th>
+                                <th>Vai trò</th>
+                                <th>Trạng thái</th>
+                                <th>Lịch</th>
+                                <th>Task</th>
+                                <th>Hoạt động cuối</th>
+                                <th class="text-end">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model.Users)
+                            {
+                                var userInitial = string.IsNullOrWhiteSpace(user.Email) ? "U" : user.Email.Substring(0, 1).ToUpperInvariant();
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrWhiteSpace(user.AvatarPath))
+                                            {
+                                                <img src="@user.AvatarPath" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                                    @userInitial
+                                                </div>
+                                            }
+                                            <div>
+                                                <a class="text-dark fw-semibold text-decoration-none" asp-controller="Profile" asp-action="Details" asp-route-id="@user.Id">@user.Email</a>
+                                                <div class="text-muted small">ID: @(user.Id.Length > 8 ? user.Id.Substring(0, 8) : user.Id)...</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge @(user.IsAdmin ? "bg-primary" : "bg-secondary")">@(user.IsAdmin ? "Admin" : "User")</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @(user.IsLocked ? "bg-danger" : "bg-success")">@(user.IsLocked ? "Bị khóa" : "Hoạt động")</span>
+                                    </td>
+                                    <td>
+                                        <a asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id" class="text-decoration-none">
+                                            <span class="badge bg-info-subtle text-info fw-bold">@user.ScheduleCount lịch</span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">@user.CompletedTaskCount/@user.TotalTaskCount</span>
+                                        @if (user.OverdueTaskCount > 0)
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger ms-1">@user.OverdueTaskCount quá hạn</span>
+                                        }
+                                    </td>
+                                    <td class="text-muted font-monospace small">
+                                        @(user.LastScheduleAt.HasValue ? user.LastScheduleAt.Value.ToString("dd/MM/yyyy HH:mm") : "Chưa lập lịch")
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="dropdown">
+                                            <button class="btn btn-light btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                ⋮
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                                <li><a class="dropdown-item" asp-controller="Schedule" asp-action="Index" asp-route-userId="@user.Id">Xem lịch trình</a></li>
+                                                <li><a class="dropdown-item" asp-controller="Profile" asp-action="Details" asp-route-id="@user.Id">Xem Profile</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                @if (user.IsAdmin)
+                                                {
+                                                    <li>
+                                                        <form asp-action="RemoveAdmin" method="post" class="d-inline">
+                                                            <input type="hidden" name="id" value="@user.Id" />
+                                                            <button type="submit" class="dropdown-item text-warning">Hạ quyền Admin</button>
+                                                        </form>
+                                                    </li>
+                                                }
+                                                else
+                                                {
+                                                    <li>
+                                                        <form asp-action="MakeAdmin" method="post" class="d-inline">
+                                                            <input type="hidden" name="id" value="@user.Id" />
+                                                            <button type="submit" class="dropdown-item text-primary">Gán quyền Admin</button>
+                                                        </form>
+                                                    </li>
+                                                }
+                                                @if (user.IsLocked)
+                                                {
+                                                    <li>
+                                                        <form asp-action="Unlock" method="post" class="d-inline">
+                                                            <input type="hidden" name="id" value="@user.Id" />
+                                                            <button type="submit" class="dropdown-item text-success">Mở khóa tài khoản</button>
+                                                        </form>
+                                                    </li>
+                                                }
+                                                else
+                                                {
+                                                    <li>
+                                                        <form asp-action="Lock" method="post" class="d-inline">
+                                                            <input type="hidden" name="id" value="@user.Id" />
+                                                            <button type="submit" class="dropdown-item text-danger">Khóa tài khoản</button>
+                                                        </form>
+                                                    </li>
+                                                }
+                                                <li>
+                                                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Bạn chắc chắn muốn xóa tài khoản này và toàn bộ dữ liệu lịch trình của họ?');">
+                                                        <input type="hidden" name="id" value="@user.Id" />
+                                                        <button type="submit" class="dropdown-item text-danger fw-bold">Xóa vĩnh viễn</button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.ActiveSection == "schedules")
+    {
+        <!-- Schedules Management View -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="m-0 fw-bold text-gray-800">Quản Lý Lịch Trình Hệ Thống</h5>
+                <div class="d-flex gap-2">
+                    <a asp-controller="Schedule" asp-action="Calendar" class="btn btn-outline-primary btn-sm">Xem lịch tháng</a>
+                    <a asp-controller="Schedule" asp-action="ExportPdf" class="btn btn-outline-danger btn-sm">Xuất PDF</a>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle admin-schedules-table w-100" id="schedulesTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tiêu đề lịch trình</th>
+                                <th>Người tạo</th>
+                                <th>Thời gian</th>
+                                <th>Địa điểm</th>
+                                <th>Số Task vụ</th>
+                                <th class="text-end">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var schedule in Model.Schedules)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong class="text-dark">@schedule.Title</strong>
+                                        @if (schedule.IsImportant)
+                                        {
+                                            <span class="badge bg-danger ms-2">Quan trọng</span>
+                                        }
+                                    </td>
+                                    <td class="small fw-semibold text-muted">
+                                        @(schedule.OwnerEmail ?? "Không rõ user")
+                                    </td>
+                                    <td class="font-monospace small">
+                                        @schedule.StartTime.ToString("dd/MM/yyyy HH:mm") - @schedule.EndTime.ToString("HH:mm")
+                                    </td>
+                                    <td>
+                                        @(schedule.Location ?? "-")
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary">@schedule.TaskCount task</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group gap-1">
+                                            <a asp-controller="Schedule" asp-action="Edit" asp-route-id="@schedule.Id" class="btn btn-sm btn-outline-primary rounded">Sửa</a>
+                                            <a asp-controller="Schedule" asp-action="Delete" asp-route-id="@schedule.Id" class="btn btn-sm btn-outline-danger rounded" onclick="return confirm('Xóa lịch trình này?');">Xóa</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.ActiveSection == "tasks")
+    {
+        <!-- Tasks Management View -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="m-0 fw-bold text-gray-800">Quản Lý Task Vụ Hệ Thống</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle admin-tasks-table w-100" id="tasksTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tên Task</th>
+                                <th>Thuộc Lịch trình</th>
+                                <th>Người tạo</th>
+                                <th>Hạn chót</th>
+                                <th>Trạng thái</th>
+                                <th>Độ ưu tiên</th>
+                                <th class="text-end">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var task in Model.Tasks)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="d-inline-block rounded-circle me-2" style="width: 12px; height: 12px; background: @task.Color;"></span>
+                                            <strong class="text-dark">@task.Title</strong>
+                                        </div>
+                                    </td>
+                                    <td class="small">
+                                        @(task.ScheduleTitle ?? "-")
+                                    </td>
+                                    <td class="small fw-semibold text-muted">
+                                        @(task.OwnerEmail ?? "Không rõ user")
+                                    </td>
+                                    <td class="@(task.IsOverdue ? "text-danger fw-bold" : "") font-monospace small">
+                                        @task.Deadline.ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td>
+                                        <span class="badge @(task.IsOverdue ? "bg-danger" : "bg-success")">@task.StatusLabel</span>
+                                    </td>
+                                    <td>
+                                        @task.PriorityLabel
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group gap-1">
+                                            <a asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id" class="btn btn-sm btn-outline-primary rounded">Sửa</a>
+                                            <a asp-controller="Schedule" asp-action="Edit" asp-route-id="@task.ScheduleItemId" class="btn btn-sm btn-outline-secondary rounded">Mở lịch</a>
+                                            <a asp-controller="Tasks" asp-action="Delete" asp-route-id="@task.Id" class="btn btn-sm btn-outline-danger rounded" onclick="return confirm('Xóa task này?');">Xóa</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.ActiveSection == "activity")
+    {
+        <!-- System Activity Log -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="m-0 fw-bold text-gray-800">Nhật Ký Hoạt Động Hệ Thống</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="timeline-activity">
+                    @foreach (var item in Model.RecentActivities)
+                    {
+                        <div class="timeline-activity-item d-flex mb-4 position-relative">
+                            <div class="timeline-indicator-dot bg-@item.Tone shadow-sm"></div>
+                            <div class="timeline-activity-content ms-3 flex-grow-1 border-bottom pb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div>
+                                        <span class="badge bg-@item.Tone-subtle text-@item.Tone me-2 small">@item.Type</span>
+                                        <strong class="text-dark">@item.Title</strong>
+                                    </div>
+                                    <small class="text-muted font-monospace">@item.OccurredAt.ToString("dd/MM/yyyy HH:mm:ss")</small>
+                                </div>
+                                <p class="text-muted mb-0">@item.Detail</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.ActiveSection == "notifications")
+    {
+        <div class="row g-4">
+            <!-- User Reports Section (main) -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="m-0 fw-bold admin-quick-title">📋 Báo cáo từ Người dùng</h5>
+                            <small class="admin-quick-sub">Người dùng tố cáo nhau – cần xem xét và xử lý</small>
+                        </div>
+                        @if (Model.PendingReports.Any())
+                        {
+                            <span class="badge bg-danger rounded-pill fs-6 px-3">@Model.PendingReports.Count chờ xử lý</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success-subtle text-success px-3 py-2">Không có báo cáo mới</span>
+                        }
+                    </div>
+                    <div class="card-body p-0">
+                        @if (!Model.PendingReports.Any())
+                        {
+                            <div class="py-5 text-center">
+                                <div style="font-size:3rem;">✅</div>
+                                <h5 class="fw-bold mt-3 admin-quick-title">Không có báo cáo chờ xử lý</h5>
+                                <p class="admin-quick-sub">Tất cả báo cáo đã được xử lý.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-4">Người bị báo cáo</th>
+                                            <th>Danh mục</th>
+                                            <th>Nội dung báo cáo</th>
+                                            <th>Thời gian</th>
+                                            <th class="text-end pe-4">Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var rpt in Model.PendingReports)
+                                        {
+                                            var catLabel = rpt.Category switch
+                                            {
+                                                "spam" => "Spam",
+                                                "harassment" => "Quấy rối",
+                                                "fake" => "Giả mạo",
+                                                "inappropriate" => "Nội dung xấu",
+                                                _ => "Khác"
+                                            };
+                                            var catClass = rpt.Category switch
+                                            {
+                                                "spam" => "bg-warning-subtle text-warning",
+                                                "harassment" => "bg-danger-subtle text-danger",
+                                                "fake" => "bg-purple-subtle text-purple",
+                                                "inappropriate" => "bg-danger-subtle text-danger",
+                                                _ => "bg-secondary-subtle text-secondary"
+                                            };
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <div class="fw-semibold small" id="rpt-user-@rpt.Id">@rpt.ReportedUserId</div>
+                                                    <small class="text-muted">Báo cáo bởi: @(rpt.ReporterUserId ?? "Ẩn danh")</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @catClass px-2 py-1">@catLabel</span>
+                                                </td>
+                                                <td style="max-width:300px;">
+                                                    <p class="mb-0 small text-truncate" style="max-width:280px;" title="@rpt.Reason">@rpt.Reason</p>
+                                                </td>
+                                                <td class="small text-muted">@rpt.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                                <td class="text-end pe-4">
+                                                    <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                                        <!-- Warn -->
+                                                        <button type="button" class="btn btn-warning btn-sm"
+                                                                data-bs-toggle="modal" data-bs-target="#warnModal"
+                                                                data-report-id="@rpt.Id"
+                                                                data-user-id="@rpt.ReportedUserId"
+                                                                data-reason="@rpt.Reason">
+                                                            ⚠️ Cảnh báo
+                                                        </button>
+                                                        <!-- Lock -->
+                                                        <button type="button" class="btn btn-danger btn-sm"
+                                                                data-bs-toggle="modal" data-bs-target="#lockModal"
+                                                                data-report-id="@rpt.Id"
+                                                                data-user-id="@rpt.ReportedUserId"
+                                                                data-reason="@rpt.Reason">
+                                                            🔒 Khóa TK
+                                                        </button>
+                                                        <!-- Dismiss -->
+                                                        <form asp-action="DismissReport" asp-controller="Admin" method="post" style="display:inline;">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="reportId" value="@rpt.Id" />
+                                                            <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                                                    onclick="return confirm('Bỏ qua báo cáo này?')">
+                                                                Bỏ qua
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- System alerts (secondary) -->
+            @if (Model.Notifications.Any())
+            {
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="m-0 fw-bold admin-quick-title">⚙️ Cảnh báo hệ thống tự động</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            @foreach (var note in Model.Notifications)
+                            {
+                                <div class="alert alert-@note.Severity border-start border-4 border-@note.Severity d-flex justify-content-between align-items-center mb-2 py-2 px-3">
+                                    <div>
+                                        <strong class="small">@note.Title</strong>
+                                        <span class="text-muted small ms-2">@note.Detail</span>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(note.ActionUrl))
+                                    {
+                                        <a href="@note.ActionUrl" class="btn btn-sm btn-@note.Severity ms-2 flex-shrink-0">@note.ActionLabel</a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Warn Modal -->
+        <div class="modal fade" id="warnModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 bg-warning-subtle">
+                        <h5 class="modal-title fw-bold">⚠️ Gửi cảnh báo cho người dùng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form asp-action="WarnUser" asp-controller="Admin" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="reportId" id="warnReportId" />
+                        <div class="modal-body">
+                            <p class="text-muted small mb-3">
+                                Người dùng sẽ nhận email cảnh báo từ hệ thống. Đây là cảnh báo lần đầu trước khi khóa tài khoản.
+                            </p>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Lý do cảnh báo gửi cho user</label>
+                                <textarea class="form-control" name="adminNote" id="warnNote" rows="4"
+                                          placeholder="Mô tả hành vi vi phạm cụ thể..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-warning fw-semibold">⚠️ Gửi cảnh báo qua Email</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lock Modal -->
+        <div class="modal fade" id="lockModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 bg-danger-subtle">
+                        <h5 class="modal-title fw-bold text-danger">🔒 Khóa tài khoản người dùng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form asp-action="LockUserFromReport" asp-controller="Admin" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="reportId" id="lockReportId" />
+                        <div class="modal-body">
+                            <div class="alert alert-danger py-2 small mb-3">
+                                <strong>⚠️ Cảnh báo:</strong> Hành động này sẽ <strong>khóa vĩnh viễn</strong> tài khoản người dùng và gửi email thông báo. Không thể hoàn tác tự động.
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Lý do khóa tài khoản</label>
+                                <textarea class="form-control" name="adminNote" id="lockNote" rows="4"
+                                          placeholder="Mô tả vi phạm nghiêm trọng cụ thể..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-danger fw-semibold">🔒 Khóa tài khoản & Gửi Email</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // Populate modals with report data
+        document.getElementById('warnModal')?.addEventListener('show.bs.modal', function(e) {
+            const btn = e.relatedTarget;
+            document.getElementById('warnReportId').value = btn.dataset.reportId;
+            document.getElementById('warnNote').value = btn.dataset.reason || '';
+        });
+        document.getElementById('lockModal')?.addEventListener('show.bs.modal', function(e) {
+            const btn = e.relatedTarget;
+            document.getElementById('lockReportId').value = btn.dataset.reportId;
+            document.getElementById('lockNote').value = btn.dataset.reason || '';
+        });
+
+        // Load reporter/reported emails via fetch (optional enhancement)
+        document.querySelectorAll('[data-report-id]').forEach(btn => {
+            const userId = btn.dataset.userId;
+            const cell = document.getElementById('rpt-user-' + btn.dataset.reportId);
+            if (cell && userId) {
+                fetch('/Admin/GetUserEmail?userId=' + userId)
+                    .then(r => r.ok ? r.text() : null)
+                    .then(email => { if (email) cell.textContent = email; })
+                    .catch(() => {});
+            }
+        });
+        </script>
+    }
+    else if (Model.ActiveSection == "reports")
+    {
+        <!-- Reports Section - Admin PDF Export Center -->
+        <div class="row g-4 mb-4">
+            <!-- Card 1: Export Task PDF by date range -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="badge bg-danger-subtle text-danger p-3 fs-4">📋</div>
+                            <div>
+                                <h5 class="fw-bold mb-0 admin-quick-title">Xuất PDF Task</h5>
+                                <small class="admin-quick-sub">Lọc theo ngày & trạng thái</small>
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">Xuất danh sách tất cả task vụ trong khoảng thời gian, lọc theo trạng thái (hoàn thành, quá hạn, đang làm, chưa làm).</p>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Từ ngày</label>
+                            <input type="date" class="form-control form-control-sm" id="rpt1From" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Đến ngày</label>
+                            <input type="date" class="form-control form-control-sm" id="rpt1To" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Trạng thái</label>
+                            <select class="form-select form-select-sm" id="rpt1Status">
+                                <option value="">Tất cả</option>
+                                <option value="completed">Hoàn thành</option>
+                                <option value="overdue">Quá hạn</option>
+                                <option value="inprogress">Đang làm</option>
+                                <option value="notstarted">Chưa làm</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-danger w-100" onclick="exportReport('tasks', document.getElementById('rpt1From').value, document.getElementById('rpt1To').value, {status: document.getElementById('rpt1Status').value})">
+                            📥 Xuất PDF Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Export User Statistics PDF -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="badge bg-primary-subtle text-primary p-3 fs-4">👥</div>
+                            <div>
+                                <h5 class="fw-bold mb-0 admin-quick-title">Xuất PDF Người dùng</h5>
+                                <small class="admin-quick-sub">Thống kê hệ thống</small>
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">Xuất báo cáo thống kê người dùng: tổng số, đang hoạt động, bị khóa, admin và phân quyền.</p>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="border rounded p-2 text-center">
+                                    <div class="fw-bold text-primary fs-4">@Model.TotalUsers</div>
+                                    <small class="text-muted">Tổng</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="border rounded p-2 text-center">
+                                    <div class="fw-bold text-success fs-4">@Model.ActiveUsers</div>
+                                    <small class="text-muted">Hoạt động</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="border rounded p-2 text-center">
+                                    <div class="fw-bold text-danger fs-4">@Model.LockedUsers</div>
+                                    <small class="text-muted">Bị khóa</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="border rounded p-2 text-center">
+                                    <div class="fw-bold text-warning fs-4">@Model.AdminUsers</div>
+                                    <small class="text-muted">Admin</small>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="/Admin/ExportUsersPdf" class="btn btn-primary w-100" target="_blank">
+                            📥 Xuất PDF Người dùng
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Export per-user activity PDF -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="badge bg-success-subtle text-success p-3 fs-4">📊</div>
+                            <div>
+                                <h5 class="fw-bold mb-0 admin-quick-title">PDF Hoạt động User</h5>
+                                <small class="admin-quick-sub">Task + biểu đồ cá nhân</small>
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">Xuất báo cáo chi tiết của một user: danh sách task, tóm tắt hoạt động và thống kê cá nhân.</p>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Chọn người dùng</label>
+                            <select class="form-select form-select-sm" id="rpt3User">
+                                <option value="">-- Chọn user --</option>
+                                @foreach (var u in Model.Users)
+                                {
+                                    <option value="@u.Id">@u.Email</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Từ ngày</label>
+                            <input type="date" class="form-control form-control-sm" id="rpt3From" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Đến ngày</label>
+                            <input type="date" class="form-control form-control-sm" id="rpt3To" />
+                        </div>
+                        <button class="btn btn-success w-100" onclick="exportReport('user-activity', document.getElementById('rpt3From').value, document.getElementById('rpt3To').value, {userId: document.getElementById('rpt3User').value})">
+                            📥 Xuất PDF Hoạt động
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Export row -->
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="badge bg-warning-subtle text-warning p-3 fs-4">📅</div>
+                            <div>
+                                <h5 class="fw-bold mb-0 admin-quick-title">Xuất PDF Lịch trình</h5>
+                                <small class="admin-quick-sub">Toàn hệ thống hoặc từng user</small>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Người dùng</label>
+                                <select class="form-select form-select-sm" id="rpt4User">
+                                    <option value="">Tất cả</option>
+                                    @foreach (var u in Model.Users)
+                                    {
+                                        <option value="@u.Id">@u.Email</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Từ ngày</label>
+                                <input type="date" class="form-control form-control-sm" id="rpt4From" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Đến ngày</label>
+                                <input type="date" class="form-control form-control-sm" id="rpt4To" />
+                            </div>
+                        </div>
+                        <button class="btn btn-warning text-dark" onclick="exportReport('schedules', document.getElementById('rpt4From').value, document.getElementById('rpt4To').value, {userId: document.getElementById('rpt4User').value})">
+                            📥 Xuất PDF Lịch trình
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="badge bg-info-subtle text-info p-3 fs-4">📈</div>
+                            <div>
+                                <h5 class="fw-bold mb-0 admin-quick-title">Xuất PDF Tổng hợp</h5>
+                                <small class="admin-quick-sub">Lịch + Task + Hoạt động</small>
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">Xuất báo cáo tổng hợp đầy đủ bao gồm lịch trình, task và tóm tắt hoạt động theo khoảng thời gian tùy chọn.</p>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Từ ngày</label>
+                                <input type="date" class="form-control form-control-sm" id="rpt5From" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Đến ngày</label>
+                                <input type="date" class="form-control form-control-sm" id="rpt5To" />
+                            </div>
+                        </div>
+                        <a id="rpt5Btn" href="#" class="btn btn-info text-white" onclick="exportReport('full', document.getElementById('rpt5From').value, document.getElementById('rpt5To').value, {}); return false;">
+                            📥 Xuất PDF Tổng hợp
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function exportReport(type, from, to, extra) {
+            let url = `/Admin/ExportReportPdf?type=${type}`;
+            if (from) url += `&from=${from}`;
+            if (to) url += `&to=${to}`;
+            if (extra.userId) url += `&userId=${extra.userId}`;
+            if (extra.status) url += `&status=${extra.status}`;
+            window.open(url, '_blank');
+        }
+        </script>
+    }
+    else if (Model.ActiveSection == "settings")
+    {
+        <!-- System Configuration Settings -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="m-0 fw-bold text-gray-800">Cài đặt Cá nhân & Giao diện</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <!-- Dark Mode Setting -->
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 bg-light-subtle d-flex flex-column justify-content-between h-100">
+                            <div>
+                                <h6 class="fw-bold text-dark">Giao diện tối</h6>
+                                <p class="text-muted small">Chuyển đổi tông màu tối để bảo vệ mắt và tiết kiệm pin khi làm việc ban đêm.</p>
+                            </div>
+                            <div class="form-check form-switch fs-5 p-0 d-flex justify-content-between align-items-center">
+                                <label class="form-check-label small text-muted" for="settingThemeAdmin">Kích hoạt</label>
+                                <input class="form-check-input ms-0" type="checkbox" id="settingThemeAdmin" data-setting-app-theme-admin />
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sidebar Collapse Setting -->
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 bg-light-subtle d-flex flex-column justify-content-between h-100">
+                            <div>
+                                <h6 class="fw-bold text-dark">Thu gọn menu trái</h6>
+                                <p class="text-muted small">Mặc định thu gọn thanh menu bên trái để tối ưu diện tích hiển thị nội dung.</p>
+                            </div>
+                            <div class="form-check form-switch fs-5 p-0 d-flex justify-content-between align-items-center">
+                                <label class="form-check-label small text-muted" for="settingSidebarAdmin">Kích hoạt</label>
+                                <input class="form-check-input ms-0" type="checkbox" id="settingSidebarAdmin" data-setting-app-sidebar-admin />
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Table Density Setting -->
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 bg-light-subtle d-flex flex-column justify-content-between h-100">
+                            <div>
+                                <h6 class="fw-bold text-dark">Bảng dữ liệu gọn</h6>
+                                <p class="text-muted small">Thu nhỏ khoảng cách các dòng trong các bảng dữ liệu để hiển thị được nhiều dòng hơn.</p>
+                            </div>
+                            <div class="form-check form-switch fs-5 p-0 d-flex justify-content-between align-items-center">
+                                <label class="form-check-label small text-muted" for="settingDensityAdmin">Kích hoạt</label>
+                                <input class="form-check-input ms-0" type="checkbox" id="settingDensityAdmin" data-setting-app-density-admin />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="m-0 fw-bold text-gray-800">Cấu Hình Quản Trị Hệ Thống</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light-subtle h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <h6 class="fw-bold">Thông báo nhắc nhở qua Email</h6>
+                                <p class="text-muted small">Tự động gửi email thông báo nhắc việc khi gần đến hạn chót (cần thiết lập SMTP trong appsettings.json).</p>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-3">
+                                <span class="badge @(Model.EmailReminderEnabled ? "bg-success-subtle text-success border border-success" : "bg-secondary-subtle text-secondary border border-secondary") px-3 py-2 fs-6">
+                                    @(Model.EmailReminderEnabled ? "● Đang bật hệ thống" : "○ Đang tắt hệ thống")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light-subtle h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <h6 class="fw-bold">Cơ sở dữ liệu & Backup</h6>
+                                <p class="text-muted small">Lưu lại trạng thái cơ sở dữ liệu hiện tại hoặc khôi phục dữ liệu hệ thống.</p>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-secondary" disabled>Backup cơ sở dữ liệu (Coming Soon)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    @if (Model.ActiveSection == "overview")
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Initial data from server
+                let initialLabels = @Html.Raw(Json.Serialize(Model.ActivityPoints.Select(p => p.Label)));
+                let initialCreated = @Html.Raw(Json.Serialize(Model.ActivityPoints.Select(p => p.CreatedTaskCount)));
+                let initialCompleted = @Html.Raw(Json.Serialize(Model.ActivityPoints.Select(p => p.CompletedTaskCount)));
+                let initialOverdue = @Html.Raw(Json.Serialize(Model.ActivityPoints.Select(p => p.OverdueTaskCount)));
+
+                const ctx = document.getElementById('adminActivityChart').getContext('2d');
+                const adminChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: initialLabels,
+                        datasets: [
+                            {
+                                label: 'Task tạo mới',
+                                data: initialCreated,
+                                borderColor: '#0d6efd',
+                                backgroundColor: 'rgba(13, 110, 253, 0.08)',
+                                borderWidth: 2.5,
+                                tension: 0.35,
+                                fill: true,
+                                pointBackgroundColor: '#0d6efd',
+                                pointRadius: 4,
+                                pointHoverRadius: 7
+                            },
+                            {
+                                label: 'Task hoàn thành',
+                                data: initialCompleted,
+                                borderColor: '#198754',
+                                backgroundColor: 'rgba(25, 135, 84, 0.08)',
+                                borderWidth: 2.5,
+                                tension: 0.35,
+                                fill: true,
+                                pointBackgroundColor: '#198754',
+                                pointRadius: 4,
+                                pointHoverRadius: 7
+                            },
+                            {
+                                label: 'Task quá hạn',
+                                data: initialOverdue,
+                                borderColor: '#dc3545',
+                                backgroundColor: 'rgba(220, 53, 69, 0.08)',
+                                borderWidth: 2.5,
+                                tension: 0.35,
+                                fill: true,
+                                pointBackgroundColor: '#dc3545',
+                                pointRadius: 4,
+                                pointHoverRadius: 7
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                padding: 12, cornerRadius: 8,
+                                callbacks: {
+                                    title: (items) => 'Ngày ' + items[0].label,
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1, color: '#858796' },
+                                grid: { color: 'rgba(0,0,0,0.06)' }
+                            },
+                            x: {
+                                ticks: { color: '#858796' },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+                // ── Date range filter logic ──
+                const presetSelect = document.getElementById('chartRangePreset');
+                const customRange = document.getElementById('chartCustomRange');
+                const fromInput = document.getElementById('chartFromDate');
+                const toInput = document.getElementById('chartToDate');
+                const applyBtn = document.getElementById('chartApplyBtn');
+                const chartTitle = document.getElementById('chartTitle');
+                const chartSubtitle = document.getElementById('chartSubtitle');
+
+                function formatDate(d) {
+                    return d.toISOString().slice(0, 10);
+                }
+
+                function loadChart(from, to, label) {
+                    // Update chart data
+                    fetch(`/Admin/ChartData?from=${from}&to=${to}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            adminChart.data.labels = data.labels;
+                            adminChart.data.datasets[0].data = data.created;
+                            adminChart.data.datasets[1].data = data.completed;
+                            adminChart.data.datasets[2].data = data.overdue;
+                            adminChart.update();
+                            chartTitle.textContent = 'Biểu Đồ Hoạt Động';
+                            chartSubtitle.textContent = label;
+                        });
+
+                    // Sync KPI cards with same date range
+                    fetch(`/Admin/OverviewStats?from=${from}&to=${to}`)
+                        .then(r => r.json())
+                        .then(s => {
+                            // Update labels (card title)
+                            const l1 = document.getElementById('kpiLabel1');
+                            const l2 = document.getElementById('kpiLabel2');
+                            const l4 = document.getElementById('kpiLabel4');
+                            if (l1) l1.textContent = s.taskLabel;
+                            if (l2) l2.textContent = s.overdueLabel;
+                            if (l4) l4.textContent = s.schedLabel;
+
+                            // Update values
+                            const v1 = document.getElementById('kpiVal1');
+                            const v2 = document.getElementById('kpiVal2');
+                            const v3 = document.getElementById('kpiVal3');
+                            const v4 = document.getElementById('kpiVal4');
+                            if (v1) v1.textContent = s.tasks;
+                            if (v2) v2.textContent = s.overdue;
+                            if (v3) v3.textContent = s.completedRate + '%';
+                            if (v4) v4.textContent = s.schedules;
+
+                            // Update subtitles
+                            const s1 = document.getElementById('kpiSub1');
+                            const s2 = document.getElementById('kpiSub2');
+                            const s3 = document.getElementById('kpiSub3');
+                            const s4 = document.getElementById('kpiSub4');
+                            if (s1) s1.textContent = s.rangeLabel;
+                            if (s2) { s2.textContent = s.rangeLabel; s2.className = 'small fw-semibold ' + (s.overdue > 0 ? 'text-danger' : 'text-success'); }
+                            if (s3) { s3.textContent = s.completedRate >= 50 ? '✓ Hoàn thành tốt' : '⚠ Cần cải thiện'; s3.className = 'small fw-semibold ' + (s.completedRate >= 50 ? 'text-success' : 'text-warning'); }
+                            if (s4) s4.innerHTML = `Trong khoảng: <strong>${s.rangeLabel}</strong>`;
+                        });
+                }
+
+                presetSelect.addEventListener('change', function() {
+                    const val = this.value;
+                    if (val === 'custom') {
+                        customRange.classList.remove('d-none');
+                        customRange.classList.add('d-flex');
+                        return;
+                    }
+                    customRange.classList.add('d-none');
+                    customRange.classList.remove('d-flex');
+                    const today = new Date();
+                    const from = new Date(today);
+                    from.setDate(today.getDate() - (parseInt(val) - 1));
+                    loadChart(formatDate(from), formatDate(today), `${val} ngày gần nhất`);
+                });
+
+                applyBtn.addEventListener('click', function() {
+                    const from = fromInput.value;
+                    const to = toInput.value;
+                    if (!from || !to) { alert('Vui lòng chọn đủ ngày bắt đầu và kết thúc.'); return; }
+                    if (from > to) { alert('Ngày bắt đầu phải trước ngày kết thúc.'); return; }
+                    loadChart(from, to, `${from.split('-').reverse().join('/')} — ${to.split('-').reverse().join('/')}`);
+                });
+
+                // Set default date inputs
+                const today = new Date();
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(today.getDate() - 6);
+                fromInput.value = formatDate(sevenDaysAgo);
+                toInput.value = formatDate(today);
+            });
+        </script>
+    }
+    else if (Model.ActiveSection == "users")
+    {
+        <script>
+            $(document).ready(function() {
+                const usersTable = $('#usersTable').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+                    },
+                    pageLength: 10,
+                    columnDefs: [
+                        { orderable: false, targets: 6 } // Action column not orderable
+                    ],
+                    dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                         "<'row'<'col-sm-12'tr>>" +
+                         "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+                });
+
+                // Custom select filter logic
+                $('#userStatusFilter').on('change', function() {
+                    const filterVal = $(this).val();
+                    if (filterVal === 'all') {
+                        usersTable.column(1).search('').column(2).search('').draw();
+                    } else if (filterVal === 'locked') {
+                        usersTable.column(2).search('Bị khóa').column(1).search('').draw();
+                    } else if (filterVal === 'admin') {
+                        usersTable.column(1).search('Admin').column(2).search('').draw();
+                    } else if (filterVal === 'user') {
+                        usersTable.column(1).search('User').column(2).search('').draw();
+                    }
+                });
+            });
+        </script>
+    }
+    else if (Model.ActiveSection == "schedules")
+    {
+        <script>
+            $(document).ready(function() {
+                $('#schedulesTable').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+                    },
+                    pageLength: 10,
+                    columnDefs: [
+                        { orderable: false, targets: 5 }
+                    ]
+                });
+            });
+        </script>
+    }
+    else if (Model.ActiveSection == "tasks")
+    {
+        <script>
+            $(document).ready(function() {
+                $('#tasksTable').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+                    },
+                    pageLength: 10,
+                    columnDefs: [
+                        { orderable: false, targets: 6 }
+                    ]
+                });
+            });
+        </script>
+    }
+    else if (Model.ActiveSection == "settings")
+    {
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const themeSetting = document.querySelector('[data-setting-app-theme-admin]');
+                const sidebarSetting = document.querySelector('[data-setting-app-sidebar-admin]');
+                const densitySetting = document.querySelector('[data-setting-app-density-admin]');
+
+                if (themeSetting) {
+                    themeSetting.checked = localStorage.getItem('app-theme') === 'dark';
+                    themeSetting.addEventListener('change', () => {
+                        localStorage.setItem('app-theme', themeSetting.checked ? 'dark' : 'light');
+                        document.body.classList.toggle('app-dark', themeSetting.checked);
+                    });
+                }
+
+                if (sidebarSetting) {
+                    sidebarSetting.checked = localStorage.getItem('app-sidebar') === 'collapsed';
+                    sidebarSetting.addEventListener('change', () => {
+                        localStorage.setItem('app-sidebar', sidebarSetting.checked ? 'collapsed' : 'expanded');
+                        document.querySelector('[data-app-shell]')?.classList.toggle('is-collapsed', sidebarSetting.checked);
+                    });
+                }
+
+                if (densitySetting) {
+                    densitySetting.checked = localStorage.getItem('app-density') === 'compact';
+                    densitySetting.addEventListener('change', () => {
+                        localStorage.setItem('app-density', densitySetting.checked ? 'compact' : 'standard');
+                        document.body.classList.toggle('admin-compact-tables', densitySetting.checked);
+                    });
+                }
+            });
+        </script>
+    }
+}

@@ -44,6 +44,8 @@ namespace schedule.Controllers
                 TotalTasks = tasks.Count,
                 CompletedTasks = tasks.Count(task => task.Status == TaskItemStatus.Completed),
                 OverdueTasks = tasks.Count(task => task.Status != TaskItemStatus.Completed && task.Deadline < now),
+                InProgressTasks = tasks.Count(task => task.Status == TaskItemStatus.InProgress),
+                PendingTasks = tasks.Count(task => task.Status == TaskItemStatus.NotStarted),
                 ImportantSchedules = schedules.Count(schedule => schedule.IsImportant),
                 DailyTasks = BuildDailyTasks(tasks, today),
                 WeeklyTasks = BuildWeeklyTasks(tasks, today),
@@ -51,7 +53,9 @@ namespace schedule.Controllers
                 YearlyTasks = BuildYearlyTasks(tasks, today),
                 CompletedTaskChart = BuildCompletedTasks(tasks, today),
                 OverdueTaskChart = BuildOverdueTasks(tasks, today),
-                ImportantScheduleChart = BuildImportantSchedules(schedules, today)
+                ImportantScheduleChart = BuildImportantSchedules(schedules, today),
+                RecentActivities = BuildRecentActivities(tasks, schedules),
+                Reminders = BuildReminders(schedules, now)
             };
 
             var streak = CalculateStreak(tasks
@@ -63,6 +67,58 @@ namespace schedule.Controllers
             model.BestStreakDays = streak.Best;
 
             return View(model);
+        }
+
+        private static List<ActivityEventViewModel> BuildRecentActivities(
+            List<TaskItem> tasks,
+            List<ScheduleItem> schedules)
+        {
+            var taskEvents = tasks
+                .OrderByDescending(task => task.UpdatedAt)
+                .Take(5)
+                .Select(task => new ActivityEventViewModel
+                {
+                    Title = task.Status == TaskItemStatus.Completed
+                        ? $"Bạn đã hoàn thành task \"{task.Title}\""
+                        : $"Bạn đã cập nhật task \"{task.Title}\"",
+                    Detail = task.Description ?? "Task trong lịch của bạn",
+                    OccurredAt = task.UpdatedAt,
+                    Tone = task.Status == TaskItemStatus.Completed ? "green" : "blue"
+                });
+            var scheduleEvents = schedules
+                .OrderByDescending(schedule => schedule.CreatedAt)
+                .Take(3)
+                .Select(schedule => new ActivityEventViewModel
+                {
+                    Title = $"Bạn đã tạo lịch \"{schedule.Title}\"",
+                    Detail = $"{schedule.StartTime:dd/MM/yyyy HH:mm} · {schedule.Location}",
+                    OccurredAt = schedule.CreatedAt,
+                    Tone = schedule.IsImportant ? "purple" : "blue"
+                });
+
+            return taskEvents
+                .Concat(scheduleEvents)
+                .OrderByDescending(item => item.OccurredAt)
+                .Take(6)
+                .ToList();
+        }
+
+        private static List<ActivityReminderViewModel> BuildReminders(List<ScheduleItem> schedules, DateTime now)
+        {
+            return schedules
+                .Where(schedule => schedule.StartTime >= now && schedule.StartTime <= now.AddDays(7))
+                .OrderBy(schedule => schedule.StartTime)
+                .Take(4)
+                .Select(schedule => new ActivityReminderViewModel
+                {
+                    Title = schedule.Title,
+                    Detail = schedule.StartTime.Date == DateTime.Today
+                        ? "Bắt đầu hôm nay"
+                        : $"Bắt đầu {schedule.StartTime:dd/MM/yyyy}",
+                    StartsAt = schedule.StartTime,
+                    Tone = schedule.IsImportant ? "orange" : "blue"
+                })
+                .ToList();
         }
 
         private static ActivityChartViewModel BuildDailyTasks(List<TaskItem> tasks, DateTime today)

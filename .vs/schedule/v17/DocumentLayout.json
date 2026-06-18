@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{DAFCE865-F25D-47E1-AD9B-DB9DCDF281EC}|schedule.csproj|c:\\users\\tnwan\\downloads\\web\\web\\\u0111aweb ver13 (co the la final)\\\u0111aweb ver13 (co the la final)\\\u0111awebvs9\\schedule\\readme.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{DAFCE865-F25D-47E1-AD9B-DB9DCDF281EC}|schedule.csproj|solutionrelative:readme.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DAFCE865-F25D-47E1-AD9B-DB9DCDF281EC}|schedule.csproj|c:\\users\\tnwan\\downloads\\web\\web\\\u0111aweb ver13 (co the la final)\\\u0111aweb ver13 (co the la final)\\\u0111awebvs9\\schedule\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{DAFCE865-F25D-47E1-AD9B-DB9DCDF281EC}|schedule.csproj|solutionrelative:properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{DAFCE865-F25D-47E1-AD9B-DB9DCDF281EC}|schedule.csproj|c:\\users\\tnwan\\downloads\\web\\web\\\u0111aweb ver13 (co the la final)\\\u0111aweb ver13 (co the la final)\\\u0111awebvs9\\schedule\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{DAFCE865-F25D-47E1-AD9B-DB9DCDF281EC}|schedule.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
@@ -35,15 +43,39 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "README.md",
+              "DocumentMoniker": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\README.md",
+              "RelativeDocumentMoniker": "README.md",
+              "ToolTip": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\README.md",
+              "RelativeToolTip": "README.md",
+              "ViewState": "AgIAAJgBAAAAAAAAAAAAAKYBAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-04T08:38:42.132Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "Properties\\launchSettings.json",
+              "ToolTip": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\Properties\\launchSettings.json",
+              "RelativeToolTip": "Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-06-04T08:37:37.415Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\appsettings.json",
               "RelativeDocumentMoniker": "appsettings.json",
               "ToolTip": "C:\\Users\\TNWan\\Downloads\\WEB\\WEB\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEB Ver13 (co the la FINAL)\\\u0110AWEBVS9\\schedule\\appsettings.json",
               "RelativeToolTip": "appsettings.json",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAmwBAAAAAqAAAAAAAAAA==",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAABAAAAAqAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-05-28T17:21:46.937Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-28T17:21:46.937Z"
             }
           ]
         }

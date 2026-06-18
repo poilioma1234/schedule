@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using schedule.Data;
 using schedule.Helpers;
 using schedule.Models;
+using schedule.Services;
 using schedule.ViewModels;
 
 namespace schedule.Controllers
@@ -24,16 +25,22 @@ namespace schedule.Controllers
 
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly ILeaderboardService _leaderboardService;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly IEmailService _emailService;
 
         public ProfileController(
             ApplicationDbContext context,
             IWebHostEnvironment environment,
-            UserManager<IdentityUser> userManager)
+            ILeaderboardService leaderboardService,
+            UserManager<IdentityUser> userManager,
+            IEmailService emailService)
         {
             _context = context;
             _environment = environment;
+            _leaderboardService = leaderboardService;
             _userManager = userManager;
+            _emailService = emailService;
         }
 
         [Authorize]
@@ -184,10 +191,18 @@ namespace schedule.Controllers
             var now = DateTime.Now;
             var isOwner = User.Identity?.IsAuthenticated == true && _userManager.GetUserId(User) == user.Id;
             var isLocked = IsUserLocked(user);
-            var youtubeEmbedUrl = TryBuildYouTubeEmbedUrl(profile.MusicUrl);
+            var shouldAutoplayMusic = !isLocked && isPublicProfile && !isOwner;
+            var youtubeEmbedUrl = TryBuildYouTubeEmbedUrl(profile.MusicUrl, shouldAutoplayMusic);
             var tasks = await taskQuery.ToListAsync();
             var streak = ActivityStatsHelper.CalculateCompletionStreak(tasks, DateTime.Today);
-            var rankLabel = await BuildRankLabelAsync(user.Id, profile.IsProfilePublic, isLocked);
+            var rankLabel = await BuildCurrentRankLabelAsync(user.Id, profile.IsProfilePublic, isLocked);
+            await _leaderboardService.EnsureAllHistoricalAwardsAsync();
+            var awards = await _context.LeaderboardAwards
+                .AsNoTracking()
+                .Where(award => award.UserId == user.Id)
+                .OrderByDescending(award => award.PeriodStart)
+                .ThenBy(award => award.Rank)
+                .ToListAsync();
 
             return new ProfileViewModel
             {
@@ -197,7 +212,7 @@ namespace schedule.Controllers
                 IsLocked = isLocked,
                 IsPublicProfile = isPublicProfile,
                 PublicProfilePath = Url.Action(nameof(PublicProfile), "Profile", new { slug = profile.PublicSlug }) ?? $"/Profile/user/{profile.PublicSlug}",
-                ShouldAutoplayMusic = !isLocked && isPublicProfile && !isOwner && !string.IsNullOrWhiteSpace(youtubeEmbedUrl),
+                ShouldAutoplayMusic = shouldAutoplayMusic && !string.IsNullOrWhiteSpace(youtubeEmbedUrl),
                 YouTubeEmbedUrl = youtubeEmbedUrl,
                 Profile = profile,
                 TotalSchedules = await scheduleQuery.CountAsync(),
@@ -210,8 +225,35 @@ namespace schedule.Controllers
                 CurrentStreakDays = streak.Current,
                 LongestStreakDays = streak.Longest,
                 CompletedTaskChart = ActivityStatsHelper.BuildCompletedTasksByDay(tasks, DateTime.Today, 30),
-                RankLabel = rankLabel
+                RankLabel = rankLabel,
+                LeaderboardAwards = awards,
+                LatestAward = awards.FirstOrDefault()
             };
+        }
+
+        private async Task<string> BuildCurrentRankLabelAsync(string userId, bool isProfilePublic, bool isLocked)
+        {
+            if (isLocked)
+            {
+                return "User bị khóa";
+            }
+
+            if (!isProfilePublic)
+            {
+                return "Không tham gia bảng xếp hạng";
+            }
+
+            var today = DateTime.Today;
+            var startDate = new DateTime(today.Year, today.Month, 1);
+            var row = (await _leaderboardService.BuildRowsAsync(startDate, startDate.AddMonths(1)))
+                .FirstOrDefault(item => item.UserId == userId);
+
+            if (row == null || row.Rank > 3)
+            {
+                return "Chưa vào top 3 tháng này";
+            }
+
+            return $"#{row.Rank} tháng này - {row.Score} điểm - {row.CompletedTaskCount} task";
         }
 
         private async Task<string> BuildRankLabelAsync(string userId, bool isProfilePublic, bool isLocked)
@@ -332,7 +374,7 @@ namespace schedule.Controllers
             return string.IsNullOrWhiteSpace(slug) ? "user" : slug[..Math.Min(slug.Length, 80)];
         }
 
-        private static string? TryBuildYouTubeEmbedUrl(string? url)
+        private static string? TryBuildYouTubeEmbedUrl(string? url, bool autoplay)
         {
             if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
@@ -373,7 +415,8 @@ namespace schedule.Controllers
             }
 
             var safeVideoId = Uri.EscapeDataString(videoId);
-            return $"https://www.youtube.com/embed/{safeVideoId}?autoplay=1&loop=1&playlist={safeVideoId}&rel=0";
+            var autoplayValue = autoplay ? "1" : "0";
+            return $"https://www.youtube.com/embed/{safeVideoId}?autoplay={autoplayValue}&loop=1&playlist={safeVideoId}&rel=0";
         }
 
         private void ValidateImage(IFormFile? file, string fieldName)
@@ -414,6 +457,82 @@ namespace schedule.Controllers
         private static bool IsUserLocked(IdentityUser user)
         {
             return user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow;
+        }
+
+        // ── Report User ──────────────────────────────────────────────────────────
+        [Authorize]
+        [HttpPost("Report")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitReport(string reportedUserId, string category, string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reportedUserId) || string.IsNullOrWhiteSpace(reason))
+                return BadRequest(new { success = false, message = "Thiếu thông tin báo cáo." });
+
+            var reporterId = _userManager.GetUserId(User);
+
+            // Không cho phép tự báo cáo bản thân
+            if (reporterId == reportedUserId)
+                return BadRequest(new { success = false, message = "Không thể tự báo cáo bản thân." });
+
+            // Chống spam: mỗi user chỉ báo cáo 1 user tối đa 1 lần / 24h
+            var recentReport = await _context.UserReports
+                .Where(r => r.ReporterUserId == reporterId && r.ReportedUserId == reportedUserId
+                         && r.CreatedAt > DateTime.Now.AddHours(-24))
+                .AnyAsync();
+
+            if (recentReport)
+                return BadRequest(new { success = false, message = "Bạn đã báo cáo người dùng này trong 24 giờ qua. Vui lòng chờ thêm." });
+
+            var report = new UserReport
+            {
+                ReportedUserId = reportedUserId,
+                ReporterUserId = reporterId,
+                Category = string.IsNullOrWhiteSpace(category) ? "other" : category,
+                Reason = reason.Trim()[..Math.Min(reason.Trim().Length, 1000)],
+                CreatedAt = DateTime.Now,
+                Status = ReportStatus.Pending
+            };
+
+            _context.UserReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            // Thông báo cho admin qua email
+            try
+            {
+                var reportedUser = await _userManager.FindByIdAsync(reportedUserId);
+                var reporterUser = await _userManager.FindByIdAsync(reporterId ?? "");
+                var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+                var adminEmail = adminUsers.FirstOrDefault()?.Email;
+
+                if (!string.IsNullOrWhiteSpace(adminEmail))
+                {
+                    var categoryLabel = category switch
+                    {
+                        "spam" => "Spam / Quảng cáo",
+                        "harassment" => "Quấy rối / Ngôn từ không phù hợp",
+                        "fake" => "Giả mạo danh tính",
+                        "inappropriate" => "Nội dung không phù hợp",
+                        _ => "Khác"
+                    };
+
+                    await _emailService.SendEmailAsync(
+                        adminEmail,
+                        "[HUTECH Schedule] Có báo cáo người dùng mới",
+                        "<div style='font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px;'>" +
+                        "<h2 style='color:#dc2626;'>&#9888; Báo cáo người dùng</h2>" +
+                        $"<p><strong>Người bị báo cáo:</strong> {reportedUser?.Email ?? reportedUserId}</p>" +
+                        $"<p><strong>Người báo cáo:</strong> {reporterUser?.Email ?? "Ẩn danh"}</p>" +
+                        $"<p><strong>Danh mục:</strong> {categoryLabel}</p>" +
+                        "<p><strong>Lý do:</strong></p>" +
+                        $"<blockquote style='border-left:4px solid #dc2626;padding:12px;background:#fef2f2;border-radius:6px;'>{System.Net.WebUtility.HtmlEncode(reason)}</blockquote>" +
+                        $"<p><strong>Thời gian:</strong> {DateTime.Now:dd/MM/yyyy HH:mm}</p>" +
+                        "<a href='/Admin?section=notifications' style='display:inline-block;padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;margin-top:12px;'>Xem tại Admin Dashboard</a>" +
+                        "</div>");
+                }
+            }
+            catch { /* không để lỗi email làm hỏng luồng */ }
+
+            return Ok(new { success = true, message = "Báo cáo đã được gửi. Admin sẽ xem xét trong thời gian sớm nhất." });
         }
     }
 }

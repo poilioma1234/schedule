@@ -24,5 +24,7 @@ namespace schedule.ViewModels
         public int LongestStreakDays { get; set; }
         public ActivityChartViewModel CompletedTaskChart { get; set; } = new();
         public string RankLabel { get; set; } = "Chưa có dữ liệu xếp hạng";
+        public List<LeaderboardAward> LeaderboardAwards { get; set; } = new();
+        public LeaderboardAward? LatestAward { get; set; }
     }
 }

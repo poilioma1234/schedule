@@ -2,170 +2,388 @@
 @using System.Text.Json
 
 @{
-    ViewData["Title"] = "Hoạt động";
+    ViewData["Title"] = "Nhật ký & Biểu đồ năng suất";
     var chartPayload = JsonSerializer.Serialize(new[]
     {
         new { id = "dailyTasksChart", chart = Model.DailyTasks, type = "bar" },
         new { id = "weeklyTasksChart", chart = Model.WeeklyTasks, type = "bar" },
         new { id = "monthlyTasksChart", chart = Model.MonthlyTasks, type = "line" },
-        new { id = "yearlyTasksChart", chart = Model.YearlyTasks, type = "bar" },
-        new { id = "completedTasksChart", chart = Model.CompletedTaskChart, type = "line" },
-        new { id = "overdueTasksChart", chart = Model.OverdueTaskChart, type = "bar" },
-        new { id = "importantSchedulesChart", chart = Model.ImportantScheduleChart, type = "line" }
+        new { id = "yearlyTasksChart", chart = Model.YearlyTasks, type = "bar" }
     });
+    var total = Math.Max(1, Model.TotalTasks);
+    var completedPercent = (int)Math.Round(Model.CompletedTasks * 100.0 / total);
+    var progressPercent = (int)Math.Round(Model.InProgressTasks * 100.0 / total);
+    var pendingPercent = (int)Math.Round(Model.PendingTasks * 100.0 / total);
+    var overduePercent = Math.Max(0, 100 - completedPercent - progressPercent - pendingPercent);
 }
 
-<section class="activity-hero">
-    <div>
-        <p class="eyebrow">Hoạt động cá nhân</p>
-        <h1>Theo dõi năng suất theo thời gian</h1>
-        <p>Biểu đồ task, deadline và lịch quan trọng của @Model.UserEmail.</p>
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 fw-bold">Nhật Ký & Hoạt Động</h1>
+            <p class="text-muted mb-0">Biểu đồ năng suất, chuỗi ngày hoàn thành và phân tích công việc của bạn.</p>
+        </div>
+        <div>
+            <a class="btn btn-outline-primary shadow-sm" asp-controller="Home" asp-action="Index">Trang chủ</a>
+        </div>
     </div>
-    <div class="activity-streak">
-        <span>Chuỗi hiện tại</span>
-        <strong>@Model.CurrentStreakDays</strong>
-        <p>ngày hoạt động liên tiếp</p>
+
+    <!-- Productivity Hero Banner -->
+    <div class="card border-0 rounded-4 shadow-sm text-white mb-4 position-relative overflow-hidden" 
+         style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <div class="position-absolute bg-white opacity-10 rounded-circle" style="width: 200px; height: 200px; top: -80px; right: -40px;"></div>
+        <div class="position-absolute bg-white opacity-10 rounded-circle" style="width: 120px; height: 120px; bottom: -40px; left: -20px;"></div>
+        
+        <div class="card-body p-5 position-relative">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h2 class="display-6 fw-bold mb-2">Theo dõi năng suất theo thời gian</h2>
+                    <p class="lead opacity-90 mb-0">Biểu đồ tổng hợp task, deadline và lịch trình quan trọng của bạn.</p>
+                    <small class="opacity-75 d-block mt-2">Thống kê tự động từ cơ sở dữ liệu cho tài khoản: @Model.UserEmail</small>
+                </div>
+                <div class="col-lg-4 mt-4 mt-lg-0">
+                    <div class="card border-0 bg-white text-dark shadow rounded-4 p-4 text-center">
+                        <span class="text-muted text-uppercase small fw-bold font-monospace">Chuỗi Streak Hiện Tại</span>
+                        <div class="display-5 fw-bold my-2 text-success">
+                            🔥 @Model.CurrentStreakDays ngày
+                        </div>
+                        <p class="small text-muted mb-0">Hoàn thành task hôm nay để tiếp tục giữ chuỗi ngày năng suất!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</section>
 
-<section class="stats-grid">
-    <div class="stat-card">
-        <span>Tổng task</span>
-        <strong>@Model.TotalTasks</strong>
+    <!-- 4 KPI Metrics Grid -->
+    <div class="row g-4 mb-4">
+        <!-- Total Tasks -->
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-primary border-3">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Tổng task</span>
+                    <h3 class="fw-bold mb-0">@Model.TotalTasks</h3>
+                    <small class="text-muted">Nhiệm vụ đã tạo</small>
+                </div>
+            </div>
+        </div>
+        <!-- Completed Tasks -->
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-success border-3">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Task hoàn thành</span>
+                    <h3 class="fw-bold mb-0 text-success">@Model.CompletedTasks</h3>
+                    <small class="text-success fw-semibold">Đạt @completedPercent% tổng số việc</small>
+                </div>
+            </div>
+        </div>
+        <!-- Overdue Tasks -->
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-danger border-3">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Task quá hạn</span>
+                    <h3 class="fw-bold mb-0 text-danger">@Model.OverdueTasks</h3>
+                    <small class="text-danger fw-semibold">Cần giải quyết gấp</small>
+                </div>
+            </div>
+        </div>
+        <!-- Record Streak -->
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-warning border-3">
+                <div class="card-body p-3 p-md-4">
+                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Streak Kỷ lục</span>
+                    <h3 class="fw-bold mb-0 text-warning">⭐ @Model.BestStreakDays ngày</h3>
+                    <small class="text-muted">Hoàn thành liên tục</small>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="stat-card">
-        <span>Task hoàn thành</span>
-        <strong>@Model.CompletedTasks</strong>
+
+    <!-- 14-Day Bar Chart Section -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-bold text-dark">Năng Suất Hoàn Thành Task Hàng Ngày (14 Ngày Qua)</h5>
+            <span class="badge bg-light text-dark font-monospace fw-normal">Dạng Cột (Bar)</span>
+        </div>
+        <div class="card-body p-4">
+            <div class="chart-container" style="position: relative; height:280px; width:100%">
+                <canvas id="dailyTasksChart"></canvas>
+            </div>
+            
+            <!-- Summary Stats Panel -->
+            <div class="row g-2 mt-4 text-center">
+                <div class="col-md-4">
+                    <div class="p-3 border rounded bg-light-subtle">
+                        <span class="text-muted small d-block mb-1">Trung bình hoàn thành</span>
+                        <strong class="h5 mb-0 text-dark">
+                            @(Model.TotalTasks == 0 ? 0 : Math.Round(Model.CompletedTasks / 14.0, 1)) task/ngày
+                        </strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded bg-light-subtle">
+                        <span class="text-muted small d-block mb-1">Ngày cao nhất</span>
+                        <strong class="h5 mb-0 text-success">
+                            @(Model.DailyTasks.Values.Any() ? Model.DailyTasks.Values.Max() : 0) task
+                        </strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded bg-light-subtle">
+                        <span class="text-muted small d-block mb-1">Ngày thấp nhất</span>
+                        <strong class="h5 mb-0 text-muted">
+                            @(Model.DailyTasks.Values.Any() ? Model.DailyTasks.Values.Min() : 0) task
+                        </strong>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="stat-card">
-        <span>Task quá hạn</span>
-        <strong>@Model.OverdueTasks</strong>
+
+    <!-- 3-Column Sub Charts (Weekly, Monthly, Yearly) -->
+    <div class="row g-4 mb-4">
+        <!-- Weekly -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="m-0 fw-bold text-dark">Năng suất theo Tuần (8 Tuần)</h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="chart-container" style="position: relative; height:180px; width:100%">
+                        <canvas id="weeklyTasksChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Monthly -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="m-0 fw-bold text-dark">Tiến trình theo Tháng (12 Tháng)</h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="chart-container" style="position: relative; height:180px; width:100%">
+                        <canvas id="monthlyTasksChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Yearly -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="m-0 fw-bold text-dark">Tích lũy theo Năm (5 Năm)</h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="chart-container" style="position: relative; height:180px; width:100%">
+                        <canvas id="yearlyTasksChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="stat-card">
-        <span>Chuỗi dài nhất</span>
-        <strong>@Model.BestStreakDays</strong>
+
+    <!-- Bottom Row (Task Status Donut, Activity Feed, Reminders) -->
+    <div class="row g-4">
+        <!-- Donut Status Distribution -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="m-0 fw-bold text-dark">Phân bổ task theo Trạng thái</h5>
+                </div>
+                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+                    <div style="position: relative; width: 180px; height: 180px;">
+                        <canvas id="taskStatusDonutChart"></canvas>
+                    </div>
+                    <div class="w-100 mt-4 small font-monospace">
+                        <div class="d-flex justify-content-between border-bottom py-2">
+                            <span><strong class="text-success">■</strong> Hoàn thành:</span>
+                            <strong>@Model.CompletedTasks (@completedPercent%)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom py-2">
+                            <span><strong class="text-primary">■</strong> Đang làm:</span>
+                            <strong>@Model.InProgressTasks (@progressPercent%)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom py-2">
+                            <span><strong class="text-warning">■</strong> Chờ xử lý:</span>
+                            <strong>@Model.PendingTasks (@pendingPercent%)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 text-danger">
+                            <span><strong>■</strong> Quá hạn:</span>
+                            <strong>@Model.OverdueTasks (@overduePercent%)</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 fw-bold text-dark">Hoạt Động Cá Nhân</h5>
+                    <span class="badge bg-light text-dark font-monospace">Thời gian thực</span>
+                </div>
+                <div class="card-body p-4 pt-0">
+                    <div class="timeline-activity mt-3">
+                        @if (!Model.RecentActivities.Any())
+                        {
+                            <div class="text-center py-5 text-muted">Chưa ghi nhận hoạt động.</div>
+                        }
+                        else
+                        {
+                            @foreach (var item in Model.RecentActivities.Take(4))
+                            {
+                                <div class="timeline-activity-item d-flex mb-3 position-relative">
+                                    <div class="timeline-indicator-dot bg-@item.Tone shadow-sm"></div>
+                                    <div class="timeline-activity-content ms-3 flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <strong class="text-dark small">@item.Title</strong>
+                                            <small class="text-muted font-monospace" style="font-size:0.75rem;">@item.OccurredAt.ToString("HH:mm")</small>
+                                        </div>
+                                        <p class="text-muted small mb-0">@item.Detail</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Reminders -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 fw-bold text-dark">Nhắc Nhở Kế Hoạch</h5>
+                    <a asp-controller="Schedule" asp-action="Calendar" class="small text-decoration-none">Xem lịch</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (!Model.Reminders.Any())
+                        {
+                            <div class="text-center py-5 text-muted px-3">
+                                <p class="fs-4 mb-2">🔔</p>
+                                <h6>Không có nhắc nhở nào sắp tới</h6>
+                                <p class="small">Lịch trong tuần tới sẽ hiển thị tại đây.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var reminder in Model.Reminders.Take(4))
+                            {
+                                <a class="list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center justify-content-between" 
+                                   asp-controller="Schedule" asp-action="Index" asp-route-startDate="@reminder.StartsAt.ToString("yyyy-MM-dd")">
+                                    <div>
+                                        <strong class="text-dark d-block">@reminder.Title</strong>
+                                        <small class="text-muted">@reminder.Detail</small>
+                                    </div>
+                                    <span class="badge bg-warning-subtle text-warning font-monospace py-2">
+                                        @reminder.StartsAt.ToString("HH:mm")
+                                    </span>
+                                </a>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</section>
-
-<section class="activity-grid">
-    <article class="chart-panel chart-panel-wide">
-        <div class="section-title">
-            <h2>Task theo ngày</h2>
-            <span>14 ngày gần nhất</span>
-        </div>
-        <div class="chart-frame"><canvas id="dailyTasksChart"></canvas></div>
-    </article>
-
-    <article class="chart-panel">
-        <div class="section-title">
-            <h2>Task theo tuần</h2>
-            <span>8 tuần</span>
-        </div>
-        <div class="chart-frame"><canvas id="weeklyTasksChart"></canvas></div>
-    </article>
-
-    <article class="chart-panel">
-        <div class="section-title">
-            <h2>Task theo tháng</h2>
-            <span>12 tháng</span>
-        </div>
-        <div class="chart-frame"><canvas id="monthlyTasksChart"></canvas></div>
-    </article>
-
-    <article class="chart-panel">
-        <div class="section-title">
-            <h2>Task theo năm</h2>
-            <span>5 năm</span>
-        </div>
-        <div class="chart-frame"><canvas id="yearlyTasksChart"></canvas></div>
-    </article>
-
-    <article class="chart-panel">
-        <div class="section-title">
-            <h2>Đã hoàn thành</h2>
-            <span>Theo ngày</span>
-        </div>
-        <div class="chart-frame"><canvas id="completedTasksChart"></canvas></div>
-    </article>
-
-    <article class="chart-panel">
-        <div class="section-title">
-            <h2>Quá hạn</h2>
-            <span>Theo deadline</span>
-        </div>
-        <div class="chart-frame"><canvas id="overdueTasksChart"></canvas></div>
-    </article>
-
-    <article class="chart-panel chart-panel-wide">
-        <div class="section-title">
-            <h2>Lịch quan trọng</h2>
-            <span>12 tháng</span>
-        </div>
-        <div class="chart-frame"><canvas id="importantSchedulesChart"></canvas></div>
-    </article>
-</section>
+</div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const activityCharts = @Html.Raw(chartPayload);
+        document.addEventListener('DOMContentLoaded', function () {
+            // Load chart data payload
+            const activityCharts = @Html.Raw(chartPayload);
 
-        const baseOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: '#0f172a',
-                    padding: 12
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false
+            const baseOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { 
+                        padding: 12,
+                        cornerRadius: 8
                     }
                 },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
+                scales: {
+                    x: { 
+                        grid: { display: false },
+                        ticks: { color: '#858796' }
+                    },
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { 
+                            precision: 0,
+                            color: '#858796'
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        activityCharts.forEach((item) => {
-            const canvas = document.getElementById(item.id);
-            if (!canvas) {
-                return;
-            }
+            activityCharts.forEach((item) => {
+                const canvas = document.getElementById(item.id);
+                if (!canvas || !window.Chart) return;
+                const color = item.chart.Color;
+                const isLine = item.type === 'line';
+                new Chart(canvas, {
+                    type: item.type,
+                    data: {
+                        labels: item.chart.Labels,
+                        datasets: [{
+                            label: item.chart.Title,
+                            data: item.chart.Values,
+                            borderColor: color,
+                            backgroundColor: isLine ? 'rgba(79, 70, 229, 0.08)' : color,
+                            borderWidth: isLine ? 3 : 0,
+                            fill: isLine,
+                            tension: 0.35,
+                            borderRadius: isLine ? 0 : 4,
+                            pointBackgroundColor: color,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: baseOptions
+                });
+            });
 
-            const color = item.chart.Color;
-            const isLine = item.type === 'line';
-
-            new Chart(canvas, {
-                type: item.type,
+            // Donut chart status
+            const statusCtx = document.getElementById('taskStatusDonutChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
                 data: {
-                    labels: item.chart.Labels,
+                    labels: ['Hoàn thành', 'Đang làm', 'Chờ xử lý', 'Quá hạn'],
                     datasets: [{
-                        label: item.chart.Title,
-                        data: item.chart.Values,
-                        borderColor: color,
-                        backgroundColor: isLine ? `${color}22` : `${color}cc`,
+                        data: [@Model.CompletedTasks, @Model.InProgressTasks, @Model.PendingTasks, @Model.OverdueTasks],
+                        backgroundColor: ['#198754', '#0d6efd', '#ffc107', '#dc3545'],
                         borderWidth: 2,
-                        fill: isLine,
-                        tension: 0.35,
-                        borderRadius: isLine ? 0 : 6
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
                     }]
                 },
-                options: baseOptions
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' ' + context.label + ': ' + context.raw + ' task';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '75%'
+                }
             });
         });
     </script>

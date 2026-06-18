@@ -10,15 +10,38 @@ namespace schedule.Data
 {
     public static class IdentitySeedData
     {
-        public const string AdminEmail = "admin@example.com";
-        public const string AdminPassword = "Admin@123";
-        public const string SampleUserPassword = "User@123";
+        public const string AdminEmail = "tungnt14032004@gmail.com";
+        public const string AdminPassword = "123456";
+        public const string SampleUserPassword = "123456";
 
         public static async Task InitializeAsync(IServiceProvider serviceProvider)
         {
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+            // Clean up legacy users with @example.com or old admin@example.com
+            var legacyUsers = userManager.Users.ToList().Where(u => u.Email != null && (u.Email.Contains("@example.com") || u.Email == "admin@example.com")).ToList();
+            if (legacyUsers.Any())
+            {
+                foreach (var oldUser in legacyUsers)
+                {
+                    var tasks = context.TaskItems.Where(t => t.CreatedByUserId == oldUser.Id);
+                    context.TaskItems.RemoveRange(tasks);
+
+                    var schedules = context.ScheduleItems.Where(s => s.CreatedByUserId == oldUser.Id);
+                    context.ScheduleItems.RemoveRange(schedules);
+
+                    var profiles = context.UserProfiles.Where(p => p.UserId == oldUser.Id);
+                    context.UserProfiles.RemoveRange(profiles);
+
+                    var reports = context.UserReports.Where(r => r.ReporterUserId == oldUser.Id || r.ReportedUserId == oldUser.Email);
+                    context.UserReports.RemoveRange(reports);
+
+                    await context.SaveChangesAsync();
+                    await userManager.DeleteAsync(oldUser);
+                }
+            }
 
             foreach (var role in new[] { "Admin", "User" })
             {
@@ -70,37 +93,51 @@ namespace schedule.Data
             var samples = new[]
             {
                 new SampleUserSeed(
-                    Email: "minhanh@example.com",
-                    DisplayName: "Minh Anh",
-                    Slug: "minh-anh",
+                    Email: "nguyenxuancuong999x@gmail.com",
+                    DisplayName: "Nguyễn Xuân Cường",
+                    Slug: "nguyen-xuan-cuong",
                     Bio: "Sinh viên thích chia nhỏ deadline thành từng bước nhỏ để dễ theo dõi.",
                     MusicUrl: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-                    FacebookUrl: "https://facebook.com/minhanh",
-                    YouTubeUrl: "https://youtube.com/@minhanh"),
+                    FacebookUrl: "https://facebook.com/cuongnx",
+                    YouTubeUrl: "https://youtube.com/@cuongnx"),
                 new SampleUserSeed(
-                    Email: "hoangnam@example.com",
-                    DisplayName: "Hoàng Nam",
-                    Slug: "hoang-nam",
+                    Email: "vtd1406@gmail.com",
+                    DisplayName: "Vũ Tiến Đạt",
+                    Slug: "vu-tien-dat",
                     Bio: "Ưu tiên lịch học, bài tập nhóm và các mốc nộp báo cáo.",
                     MusicUrl: "https://www.youtube.com/watch?v=5qap5aO4i9A",
-                    FacebookUrl: "https://facebook.com/hoangnam",
-                    TikTokUrl: "https://tiktok.com/@hoangnam"),
+                    FacebookUrl: "https://facebook.com/vtdat",
+                    TikTokUrl: "https://tiktok.com/@vtdat"),
                 new SampleUserSeed(
-                    Email: "lanchi@example.com",
-                    DisplayName: "Lan Chi",
-                    Slug: "lan-chi",
+                    Email: "tungnt14062004@gmail.com",
+                    DisplayName: "Nguyễn Thanh Tùng",
+                    Slug: "nguyen-thanh-tung",
                     Bio: "Dùng Schedule Manager để cân bằng học tập, dự án cá nhân và thời gian nghỉ.",
                     MusicUrl: "https://www.youtube.com/watch?v=DWcJFNfaw9c",
-                    YouTubeUrl: "https://youtube.com/@lanchi",
-                    WebsiteUrl: "https://example.com/lan-chi"),
+                    YouTubeUrl: "https://youtube.com/@tungnt",
+                    WebsiteUrl: "https://example.com/tung-nt"),
                 new SampleUserSeed(
-                    Email: "ducminh@example.com",
-                    DisplayName: "Đức Minh",
-                    Slug: "duc-minh",
+                    Email: "hungquadeptrai5@gmail.com",
+                    DisplayName: "Hùng Đẹp Trai",
+                    Slug: "hung-dep-trai",
                     Bio: "Theo dõi deadline theo tuần và đánh dấu những lịch thật sự quan trọng.",
                     MusicUrl: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-                    FacebookUrl: "https://facebook.com/ducminh",
-                    WebsiteUrl: "https://example.com/duc-minh")
+                    FacebookUrl: "https://facebook.com/hungquadeptrai",
+                    WebsiteUrl: "https://example.com/hung-dep-trai"),
+                new SampleUserSeed(
+                    Email: "abcxyz07055@gmail.com",
+                    DisplayName: "Nguyễn Anh Tuấn",
+                    Slug: "nguyen-anh-tuan",
+                    Bio: "Thích lập kế hoạch chi tiết cho từng ngày học tập và giải trí.",
+                    MusicUrl: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
+                    FacebookUrl: "https://facebook.com/anhtuan"),
+                new SampleUserSeed(
+                    Email: "nhantt1007@gmail.com",
+                    DisplayName: "Trần Thanh Nhân",
+                    Slug: "tran-thanh-nhan",
+                    Bio: "Tập trung cao độ vào các task quan trọng để hoàn thành sớm nhất.",
+                    MusicUrl: "https://www.youtube.com/watch?v=5qap5aO4i9A",
+                    FacebookUrl: "https://facebook.com/thanhnhan")
             };
 
             foreach (var sample in samples)
@@ -330,8 +367,8 @@ namespace schedule.Data
             UserManager<IdentityUser> userManager)
         {
             var users = await userManager.GetUsersInRoleAsync("User");
-            var templateStart = new DateTime(2026, 5, 8);
-            var templateEnd = new DateTime(2026, 6, 19);
+            var templateStart = new DateTime(2026, 5, 4);
+            var templateEnd = new DateTime(2026, 7, 21);
             var today = DateTime.Today;
             var topics = new[]
             {
@@ -342,96 +379,136 @@ namespace schedule.Data
                 "Đọc tài liệu",
                 "Review kế hoạch",
                 "Cập nhật project",
-                "Kiểm tra tiến độ"
+                "Kiểm tra tiến độ",
+                "Lập trình ASP.NET Core",
+                "Luyện thi chứng chỉ",
+                "Thiết kế database"
             };
             var locations = new[] { "Thư viện", "Ở nhà", "Online", "Phòng lab", "Quán cà phê", "Lớp học" };
 
             foreach (var user in users.Where(user => user.Email != AdminEmail))
             {
-                if (await context.ScheduleItems.AnyAsync(item =>
-                    item.CreatedByUserId == user.Id && item.Title.StartsWith("[Template]")))
+                // Delete existing template tasks & schedules first to allow clean re-seed
+                var oldSchedules = await context.ScheduleItems
+                    .Where(item => item.CreatedByUserId == user.Id && item.Title.StartsWith("[Template]"))
+                    .ToListAsync();
+                if (oldSchedules.Any())
                 {
-                    continue;
+                    context.ScheduleItems.RemoveRange(oldSchedules);
+                    await context.SaveChangesAsync();
                 }
 
                 var seed = Math.Abs((user.Email ?? user.Id).GetHashCode());
                 var random = new Random(seed);
 
+                // Set completion rate based on user email
+                double completionRate = user.Email switch
+                {
+                    "nguyenxuancuong999x@gmail.com" => 1.0,
+                    "vtd1406@gmail.com" => 0.8,
+                    "tungnt14062004@gmail.com" => 0.7,
+                    "hungquadeptrai5@gmail.com" => 0.9,
+                    "abcxyz07055@gmail.com" => 0.5,
+                    "nhantt1007@gmail.com" => 0.85,
+                    _ => 0.8
+                };
+
                 for (var date = templateStart.Date; date <= templateEnd.Date; date = date.AddDays(1))
                 {
-                    var topic = topics[random.Next(topics.Length)];
-                    var startHour = random.Next(8, 20);
-                    var startTime = date.AddHours(startHour).AddMinutes(random.Next(0, 2) * 30);
-                    var schedule = new ScheduleItem
+                    // Target total tasks for this user on this day: between 5 and 20
+                    var totalTasksForDay = random.Next(5, 21);
+                    var tasksRemaining = totalTasksForDay;
+                    var schedIndex = 1;
+
+                    while (tasksRemaining > 0)
                     {
-                        Title = $"[Template] {topic} - {date:dd/MM}",
-                        Description = "Dữ liệu mẫu để kiểm tra dashboard, profile và biểu đồ hoạt động.",
-                        StartTime = startTime,
-                        EndTime = startTime.AddHours(random.Next(1, 3)),
-                        Location = locations[random.Next(locations.Length)],
-                        IsImportant = random.NextDouble() < 0.35,
-                        ReceiverEmail = user.Email,
-                        ReminderMinutes = 5,
-                        CreatedByUserId = user.Id,
-                        CreatedByEmail = user.Email,
-                        CreatedAt = date.AddDays(-random.Next(1, 5)).AddHours(9)
-                    };
-
-                    context.ScheduleItems.Add(schedule);
-
-                    var taskCount = random.Next(2, 5);
-                    for (var index = 1; index <= taskCount; index++)
-                    {
-                        var priority = (TaskPriorityLevel)random.Next(0, 4);
-                        var deadline = date.AddHours(random.Next(9, 23));
-                        var status = BuildTemplateTaskStatus(date, deadline, today, random, index);
-                        var completedAt = status == TaskItemStatus.Completed
-                            ? date.AddHours(18).AddMinutes(random.Next(0, 90))
-                            : date.AddHours(9);
-
-                        context.TaskItems.Add(new TaskItem
+                        var topic = topics[random.Next(topics.Length)];
+                        var startHour = 8 + (schedIndex * 3) % 12; // spread them out
+                        var startTime = date.AddHours(startHour).AddMinutes(random.Next(0, 2) * 30);
+                        var schedule = new ScheduleItem
                         {
-                            ScheduleItem = schedule,
-                            Title = $"[Template] Task {index}: {topic}",
-                            Description = "Task mẫu có deadline, trạng thái, màu và mức độ ưu tiên.",
-                            Deadline = deadline,
-                            Status = status,
-                            Priority = priority,
-                            Color = TaskDisplayHelper.PriorityColor(priority),
-                            AttachmentUrl = random.NextDouble() < 0.45 ? "https://example.com/template-task" : null,
+                            Title = $"[Template] {topic} - {date:dd/MM} (Ca {schedIndex})",
+                            Description = "Dữ liệu lịch trình mẫu để kiểm tra hệ thống.",
+                            StartTime = startTime,
+                            EndTime = startTime.AddHours(random.Next(1, 3)),
+                            Location = locations[random.Next(locations.Length)],
+                            IsImportant = random.NextDouble() < 0.3,
+                            ReceiverEmail = user.Email,
+                            ReminderMinutes = 5,
                             CreatedByUserId = user.Id,
                             CreatedByEmail = user.Email,
-                            CreatedAt = schedule.CreatedAt,
-                            UpdatedAt = completedAt
-                        });
+                            CreatedAt = date.AddDays(-random.Next(1, 5)).AddHours(9)
+                        };
+
+                        context.ScheduleItems.Add(schedule);
+
+                        // Assign between 2 and 6 tasks to this schedule
+                        var tasksForThisSched = Math.Min(random.Next(2, 6), tasksRemaining);
+                        tasksRemaining -= tasksForThisSched;
+
+                        for (var index = 1; index <= tasksForThisSched; index++)
+                        {
+                            var priority = (TaskPriorityLevel)random.Next(0, 4);
+                            var deadline = date.AddHours(random.Next(9, 23));
+
+                            TaskItemStatus status;
+                            DateTime completedAt;
+
+                            if (date.Date < today.Date)
+                            {
+                                // Past date: status is either Completed or Overdue based on completionRate
+                                if (random.NextDouble() < completionRate)
+                                {
+                                    status = TaskItemStatus.Completed;
+                                    completedAt = date.AddHours(10 + random.Next(0, 10));
+                                }
+                                else
+                                {
+                                    status = TaskItemStatus.Overdue;
+                                    completedAt = date.AddHours(9);
+                                }
+                            }
+                            else if (date.Date == today.Date)
+                            {
+                                // Today: mix of Completed, InProgress, and Overdue (if deadline is past)
+                                if (random.NextDouble() < completionRate)
+                                {
+                                    status = TaskItemStatus.Completed;
+                                    completedAt = DateTime.Now.AddHours(-1);
+                                }
+                                else
+                                {
+                                    status = deadline < DateTime.Now ? TaskItemStatus.Overdue : TaskItemStatus.InProgress;
+                                    completedAt = date.AddHours(9);
+                                }
+                            }
+                            else
+                            {
+                                // Future date: InProgress or NotStarted
+                                status = random.NextDouble() < 0.35 ? TaskItemStatus.InProgress : TaskItemStatus.NotStarted;
+                                completedAt = date.AddHours(9);
+                            }
+
+                            context.TaskItems.Add(new TaskItem
+                            {
+                                ScheduleItem = schedule,
+                                Title = $"[Template] Task {schedIndex}-{index}: {topic}",
+                                Description = "Task mẫu có deadline, trạng thái, màu và mức độ ưu tiên.",
+                                Deadline = deadline,
+                                Status = status,
+                                Priority = priority,
+                                Color = TaskDisplayHelper.PriorityColor(priority),
+                                AttachmentUrl = random.NextDouble() < 0.45 ? "https://example.com/template-task" : null,
+                                CreatedByUserId = user.Id,
+                                CreatedByEmail = user.Email,
+                                CreatedAt = schedule.CreatedAt,
+                                UpdatedAt = completedAt
+                            });
+                        }
+                        schedIndex++;
                     }
                 }
             }
-        }
-
-        private static TaskItemStatus BuildTemplateTaskStatus(
-            DateTime date,
-            DateTime deadline,
-            DateTime today,
-            Random random,
-            int taskIndex)
-        {
-            if (date.Date <= today.Date)
-            {
-                if (taskIndex == 1)
-                {
-                    return TaskItemStatus.Completed;
-                }
-
-                if (deadline < DateTime.Now && random.NextDouble() < 0.28)
-                {
-                    return TaskItemStatus.Overdue;
-                }
-
-                return random.NextDouble() < 0.7 ? TaskItemStatus.Completed : TaskItemStatus.InProgress;
-            }
-
-            return random.NextDouble() < 0.35 ? TaskItemStatus.InProgress : TaskItemStatus.NotStarted;
         }
 
         private static async Task EnsureProfilesForExistingUsersAsync(

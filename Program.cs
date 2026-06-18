@@ -13,6 +13,10 @@ namespace schedule
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+            builder.Logging.AddDebug();
+
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("Missing DefaultConnection.");
 
@@ -23,10 +27,10 @@ namespace schedule
                 {
                     options.SignIn.RequireConfirmedAccount = false;
                     options.Password.RequiredLength = 6;
-                    options.Password.RequireDigit = true;
-                    options.Password.RequireLowercase = true;
-                    options.Password.RequireUppercase = true;
-                    options.Password.RequireNonAlphanumeric = true;
+                    options.Password.RequireDigit = false;
+                    options.Password.RequireLowercase = false;
+                    options.Password.RequireUppercase = false;
+                    options.Password.RequireNonAlphanumeric = false;
                     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
                     options.Lockout.MaxFailedAccessAttempts = 5;
                 })
@@ -42,6 +46,7 @@ namespace schedule
 
             builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
             builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
             builder.Services.AddHostedService<ReminderService>();
             builder.Services.AddControllersWithViews();
             builder.Services.AddRazorPages();
@@ -69,6 +74,8 @@ namespace schedule
 
             using (var scope = app.Services.CreateScope())
             {
+                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await context.Database.MigrateAsync();
                 await IdentitySeedData.InitializeAsync(scope.ServiceProvider);
             }
 

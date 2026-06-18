@@ -5,74 +5,150 @@
     var periodOptions = new[]
     {
         new { Value = "day", Label = "Ngày" },
+        new { Value = "week", Label = "Tuần" },
         new { Value = "month", Label = "Tháng" },
         new { Value = "year", Label = "Năm" }
     };
+    var podium = Model.Rows.Take(3).ToList();
+    var tableRows = Model.Rows.Skip(3).ToList();
+    string RankTone(int rank) => rank switch { 1 => "gold", 2 => "silver", 3 => "bronze", _ => "blue" };
 }
 
-<section class="leaderboard-hero">
-    <div>
-        <p class="eyebrow">Bảng xếp hạng</p>
-        <h1>Top 3 user hoàn thành task tốt nhất</h1>
-        <p>Điểm được tính riêng theo từng mốc thời gian. Bảng tháng sẽ tự reset khi sang tháng mới.</p>
+<section class="app-page leaderboard-page">
+    <div class="app-page-heading">
+        <div>
+            <h1>Bảng xếp hạng</h1>
+            <p>Trang chủ › Bảng xếp hạng</p>
+        </div>
     </div>
-    <div class="leaderboard-period-card">
-        <span>@Model.PeriodTitle</span>
-        <strong>@Model.Rows.Count</strong>
-        <small>vị trí top 3</small>
-    </div>
-</section>
 
-<div class="leaderboard-toolbar">
-    <div class="leaderboard-tabs">
-        @foreach (var option in periodOptions)
-        {
-            <a class="btn @(Model.Period == option.Value ? "btn-primary" : "btn-outline-primary")"
-               asp-action="Index"
-               asp-route-period="@option.Value"
-               asp-route-month="@Model.SelectedMonth">@option.Label</a>
-        }
+    <section class="leaderboard-banner">
+        <div class="trophy-mark">TOP</div>
+        <div>
+            <h2>Top 3 user hoàn thành task tốt nhất</h2>
+            <p>Dựa trên số lượng task hoàn thành, điểm ưu tiên và mức độ đúng hạn.</p>
+            <small>Dữ liệu được cập nhật mỗi lần mở trang. Huy hiệu tháng chỉ được chốt khi tháng đã kết thúc.</small>
+        </div>
+        <aside>
+            <span>Cập nhật lần cuối</span>
+            <strong>@Model.LastUpdatedAt.ToString("dd/MM/yyyy HH:mm")</strong>
+        </aside>
+    </section>
+
+    <div class="leaderboard-controls">
+        <nav class="period-tabs" aria-label="Chọn kỳ xếp hạng">
+            @foreach (var option in periodOptions)
+            {
+                <a class="@(Model.Period == option.Value ? "active" : "")"
+                   asp-action="Index"
+                   asp-route-period="@option.Value"
+                   asp-route-month="@Model.SelectedMonth"
+                   asp-route-date="@Model.SelectedDate">@option.Label</a>
+            }
+        </nav>
+
+        <form asp-action="Index" method="get">
+            <input type="hidden" name="period" value="@Model.Period" />
+            @if (Model.Period == "month")
+            {
+                <input name="month" type="month" value="@Model.SelectedMonth" onchange="this.form.submit()" />
+            }
+            else if (Model.Period == "day" || Model.Period == "week")
+            {
+                <input name="date" type="date" value="@Model.SelectedDate" onchange="this.form.submit()" />
+            }
+            else
+            {
+                <span>@Model.PeriodTitle</span>
+            }
+        </form>
     </div>
 
     @if (Model.Period == "month")
     {
-        <form asp-action="Index" method="get" class="leaderboard-month-form">
-            <input type="hidden" name="period" value="month" />
-            <label for="month">Chọn tháng</label>
-            <input id="month" name="month" type="month" class="form-control" value="@Model.SelectedMonth" />
-            <button class="btn btn-primary" type="submit">Xem</button>
-        </form>
+        <div class="award-state @(Model.IsFinalizedPeriod ? "final" : "live")">
+            @if (Model.IsFinalizedPeriod)
+            {
+                <strong>Tháng này đã chốt.</strong>
+                <span>Top 1-3 đã được lưu huy hiệu vĩnh viễn vào profile.</span>
+            }
+            else
+            {
+                <strong>Bảng tháng hiện tại đang live.</strong>
+                <span>Huy hiệu sẽ được lưu sau khi tháng kết thúc.</span>
+            }
+        </div>
     }
-</div>
 
-<section class="leaderboard-panel">
-    @if (Model.Rows.Any())
+    @if (podium.Any())
     {
-        <div class="table-responsive">
-            <table class="table leaderboard-table align-middle">
-                <thead>
-                    <tr>
-                        <th>Hạng</th>
-                        <th>Người dùng</th>
-                        <th class="text-end">Task hoàn thành</th>
-                        <th class="text-end">Điểm</th>
-                        <th class="text-end">Task khẩn cấp</th>
-                        <th class="text-end">Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Rows)
-                    {
-                        var initial = string.IsNullOrWhiteSpace(row.DisplayName)
-                            ? "U"
-                            : row.DisplayName.Substring(0, 1).ToUpper();
+        <section class="podium-grid">
+            @foreach (var row in podium)
+            {
+                var initial = string.IsNullOrWhiteSpace(row.DisplayName) ? "U" : row.DisplayName.Substring(0, 1).ToUpper();
+                <article class="podium-card @RankTone(row.Rank)">
+                    <span class="rank-ribbon">#@row.Rank</span>
+                    <div class="podium-avatar">
+                        @if (!string.IsNullOrWhiteSpace(row.AvatarPath))
+                        {
+                            <img src="@row.AvatarPath" alt="Ảnh đại diện của @row.DisplayName" />
+                        }
+                        else
+                        {
+                            <b>@initial</b>
+                        }
+                    </div>
+                    <h3>@row.DisplayName</h3>
+                    <p>@row.Email</p>
+                    <strong>@row.Score điểm</strong>
+                    <div class="podium-stats">
+                        <span><b>@row.CompletedTaskCount</b>Task hoàn thành</span>
+                        <span><b>@row.OnTimeTaskCount</b>Task đúng hạn</span>
+                        <span><b>@row.OnTimeRate%</b>Tỷ lệ đúng hạn</span>
+                    </div>
+                    <a href="@row.PublicProfilePath">Xem profile</a>
+                </article>
+            }
+        </section>
+    }
+    else
+    {
+        <section class="app-card">
+            <div class="empty-state compact">
+                <h3>Chưa có dữ liệu xếp hạng</h3>
+                <p>Chỉ user đang hoạt động, bật profile công khai và có task hoàn thành mới được tính điểm.</p>
+            </div>
+        </section>
+    }
+
+    <section class="app-card leaderboard-table-card">
+        <div class="app-card-title">
+            <h2>Bảng chi tiết</h2>
+            <span>@Model.Rows.Count người dùng</span>
+        </div>
+
+        @if (tableRows.Any())
+        {
+            <div class="modern-table-wrap">
+                <table class="modern-table">
+                    <thead>
                         <tr>
-                            <td>
-                                <span class="rank-badge rank-top">#@row.Rank</span>
-                            </td>
-                            <td>
-                                <div class="leaderboard-user">
-                                    <div class="leaderboard-avatar">
+                            <th>Hạng</th>
+                            <th>Người dùng</th>
+                            <th>Task hoàn thành</th>
+                            <th>Điểm</th>
+                            <th>Task đúng hạn</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in tableRows)
+                        {
+                            var initial = string.IsNullOrWhiteSpace(row.DisplayName) ? "U" : row.DisplayName.Substring(0, 1).ToUpper();
+                            <tr>
+                                <td><span class="rank-chip">@row.Rank</span></td>
+                                <td>
+                                    <div class="leaderboard-user-cell">
                                         @if (!string.IsNullOrWhiteSpace(row.AvatarPath))
                                         {
                                             <img src="@row.AvatarPath" alt="Ảnh đại diện của @row.DisplayName" />
@@ -81,34 +157,46 @@
                                         {
                                             <span>@initial</span>
                                         }
-                                    </div>
-                                    <div>
                                         <strong>@row.DisplayName</strong>
-                                        <span>@row.Email</span>
+                                        <small>@row.Email</small>
                                     </div>
-                                </div>
-                            </td>
-                            <td class="text-end">
-                                <strong>@row.CompletedTaskCount</strong>
-                            </td>
-                            <td class="text-end">
-                                <span class="score-pill">@row.Score điểm</span>
-                            </td>
-                            <td class="text-end">@row.UrgentTaskCount</td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="@row.PublicProfilePath">Xem profile</a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-    else
+                                </td>
+                                <td><strong>@row.CompletedTaskCount</strong></td>
+                                <td><span class="score-pill">@row.Score điểm</span></td>
+                                <td>@row.OnTimeTaskCount (@row.OnTimeRate%)</td>
+                                <td><a class="table-action" href="@row.PublicProfilePath">Xem profile</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else if (Model.Rows.Count <= 3 && Model.Rows.Any())
+        {
+            <div class="empty-state compact">
+                <h3>Chỉ có top 3 trong kỳ này</h3>
+                <p>Các user tiếp theo sẽ xuất hiện khi có thêm task hoàn thành.</p>
+            </div>
+        }
+    </section>
+
+    @if (Model.Period == "month" && Model.MonthlyAwards.Any())
     {
-        <div class="empty-state">
-            <h3>Chưa có top 3 cho mốc này</h3>
-            <p>Chỉ user đang hoạt động, bật profile công khai và có task hoàn thành mới được tính điểm.</p>
-        </div>
+        <section class="app-card">
+            <div class="app-card-title">
+                <h2>Huy hiệu đã lưu cho @Model.PeriodTitle</h2>
+                <span>@Model.MonthlyAwards.Count huy hiệu</span>
+            </div>
+            <div class="award-grid">
+                @foreach (var award in Model.MonthlyAwards)
+                {
+                    <article class="award-card @RankTone(award.Rank)">
+                        <span>#@award.Rank</span>
+                        <strong>@award.DisplayNameSnapshot</strong>
+                        <small>@award.Score điểm · @award.CompletedTaskCount task · lưu @award.AwardedAt.ToString("dd/MM/yyyy")</small>
+                    </article>
+                }
+            </div>
+        </section>
     }
 </section>
