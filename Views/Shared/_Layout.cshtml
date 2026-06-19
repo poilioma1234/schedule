@@ -9,6 +9,8 @@
     var isAdmin = User.IsInRole("Admin");
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    var showAiChatLauncher = isAuthenticated
+        && !string.Equals(currentController, "AiChat", StringComparison.OrdinalIgnoreCase);
     var userEmail = User.Identity?.Name ?? "";
     var userId = isAuthenticated ? UserManager.GetUserId(User) : null;
     string? avatarPath = null;
@@ -126,6 +128,7 @@
                         <a class="@ActiveSchedule()" asp-controller="Schedule" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><b>Lịch trình</b></a>
                         <a class="@Active("Tasks")" asp-controller="Tasks" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><b>Task</b></a>
                         <a class="@ActiveCalendar()" asp-controller="Schedule" asp-action="Calendar"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><b>Calendar</b></a>
+                        <a class="@Active("AiChat")" asp-controller="AiChat" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg></span><b>AI Chat</b></a>
                         <a class="@Active("Activity")" asp-controller="Activity" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><b>Hoạt động</b></a>
                         <a class="@Active("Leaderboard")" asp-controller="Leaderboard" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span><b>Xếp hạng</b></a>
                         <a class="@Active("Reports")" asp-controller="Reports" asp-action="Index"><span><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><b>Báo cáo</b></a>
@@ -186,6 +189,12 @@
                         <a class="app-icon-link" asp-controller="Schedule" asp-action="Calendar" aria-label="Calendar" title="Lịch Calendar">
                             <span style="font-size: 1.35rem; line-height: 1;">📅</span>
                         </a>
+                        @if (showAiChatLauncher)
+                        {
+                            <button class="app-icon-link app-icon-button" type="button" data-bs-toggle="modal" data-bs-target="#aiChatPopup" aria-label="AI Chat" title="AI Chat">
+                                <span style="font-size: 0.95rem; line-height: 1; font-weight: 900;">AI</span>
+                            </button>
+                        }
                         <a class="app-top-profile" asp-controller="Profile" asp-action="Index">
                             @if (!string.IsNullOrWhiteSpace(avatarPath))
                             {
@@ -253,6 +262,48 @@
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (showAiChatLauncher)
+    {
+        <div class="modal fade ai-chat-popup" id="aiChatPopup" tabindex="-1" aria-labelledby="aiChatPopupLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h2 class="modal-title fs-5" id="aiChatPopupLabel">AI Chat</h2>
+                            <span class="text-muted small">Táº¡o lá»‹ch, task vÃ  phÃ¢n tÃ­ch deadline</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="AiChat" asp-action="Index">Má»Ÿ rá»™ng</a>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ÄÃ³ng"></button>
+                        </div>
+                    </div>
+                    <div class="modal-body">
+                        <iframe
+                            class="ai-chat-frame"
+                            src="about:blank"
+                            data-ai-src="@Url.Action("Index", "AiChat", new { embed = true })"
+                            title="AI Chat"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (() => {
+                const popup = document.getElementById('aiChatPopup');
+                if (!popup) {
+                    return;
+                }
+
+                popup.addEventListener('show.bs.modal', () => {
+                    const frame = popup.querySelector('.ai-chat-frame');
+                    if (frame && frame.getAttribute('src') === 'about:blank') {
+                        frame.setAttribute('src', frame.dataset.aiSrc);
+                    }
+                });
+            })();
+        </script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

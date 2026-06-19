@@ -1,1 +1,6 @@
 .build-check/
+.vs/
+bin/
+obj/
+wwwroot/uploads/
+run-schedule*.log

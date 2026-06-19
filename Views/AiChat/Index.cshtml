@@ -1,0 +1,304 @@
+@model schedule.ViewModels.AiChatPageViewModel
+@using schedule.Helpers
+@using schedule.Models
+
+@{
+    ViewData["Title"] = "AI Chat";
+    Layout = Model.Embed ? null : "_Layout";
+    var quickPrompt = "Tạo lịch ôn thi trong 7 ngày, mỗi ngày 2 tiếng, có task ôn lý thuyết và làm đề.";
+}
+
+@if (Model.Embed)
+{
+    @:<!DOCTYPE html>
+    @:<html lang="vi">
+    @:<head>
+    @:<meta charset="utf-8" />
+    @:<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    @:<title>AI Chat - Schedule Manager</title>
+    @:<link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
+    @:<link rel="stylesheet" href="/css/site.css" />
+    @:</head>
+    @:<body class="ai-chat-embed-body">
+    @:<main class="ai-chat-embed-shell">
+}
+
+<div class="page-heading ai-chat-heading">
+    <div>
+        <h1>AI Chat</h1>
+        <p class="text-muted mb-0">Trợ lý gợi ý lịch, task, deadline và ưu tiên theo calendar của bạn.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" asp-action="Index" asp-route-embed="@Model.Embed" asp-route-newChat="true">Chat mới</a>
+        <a class="btn btn-outline-primary" asp-controller="Schedule" asp-action="Calendar" target="@(Model.Embed ? "_top" : null)">Mở calendar</a>
+        @if (Model.ConversationId.HasValue)
+        {
+            <form asp-action="Clear" method="post">
+                <input type="hidden" name="embed" value="@Model.Embed.ToString().ToLowerInvariant()" />
+                <input type="hidden" name="conversationId" value="@Model.ConversationId" />
+                <button class="btn btn-outline-danger" type="submit">Xóa đoạn chat</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["AiChatError"] != null)
+{
+    <div class="alert alert-danger">@TempData["AiChatError"]</div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+<section class="ai-chat-grid @(Model.Embed ? "ai-chat-grid-embed" : "ai-chat-grid-full")">
+    <aside class="ai-conversation-panel">
+        <div class="ai-conversation-heading">
+            <strong>Đoạn chat</strong>
+            <a asp-action="Index" asp-route-embed="@Model.Embed" asp-route-newChat="true">Mới</a>
+        </div>
+
+        @if (Model.Conversations.Any())
+        {
+            <div class="ai-conversation-list">
+                @foreach (var conversation in Model.Conversations)
+                {
+                    <a class="ai-conversation-item @(conversation.IsActive ? "active" : "")"
+                       asp-action="Index"
+                       asp-route-embed="@Model.Embed"
+                       asp-route-conversationId="@conversation.Id">
+                        <strong>@conversation.Title</strong>
+                        <span>@conversation.LastMessage</span>
+                        <time>@conversation.UpdatedAt.ToString("dd/MM HH:mm")</time>
+                    </a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state compact">
+                <h3>Chưa có chat</h3>
+                <p>Tạo chat mới để AI hỗ trợ lên lịch.</p>
+            </div>
+        }
+    </aside>
+
+    <div class="ai-chat-panel">
+        <div class="ai-chat-thread" data-ai-chat-thread>
+            @if (Model.Messages.Any())
+            {
+                @foreach (var message in Model.Messages)
+                {
+                    var isUser = message.Role == "user";
+                    <article class="ai-message @(isUser ? "ai-message-user" : "ai-message-assistant")">
+                        <div class="ai-message-meta">
+                            <strong>@(isUser ? "Bạn" : "AI")</strong>
+                            <span>@message.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <p>@message.Content</p>
+
+                        @if (!isUser && message.Plan?.Schedules.Any() == true)
+                        {
+                            <form class="ai-plan-form" asp-action="Apply" method="post">
+                                <input type="hidden" name="Embed" value="@Model.Embed.ToString().ToLowerInvariant()" />
+                                <input type="hidden" name="ConversationId" value="@Model.ConversationId" />
+                                <input type="hidden" name="MessageId" value="@message.Id" />
+                                <div class="section-title">
+                                    <h2>Lịch AI đề xuất</h2>
+                                    <span class="text-muted small">Chỉnh sửa trước khi lưu</span>
+                                </div>
+
+                                @for (var i = 0; i < message.Plan.Schedules.Count; i++)
+                                {
+                                    var schedule = message.Plan.Schedules[i];
+                                    <div class="ai-plan-card">
+                                        <div class="form-check mb-2">
+                                            <input type="hidden" name="Schedules[@i].Include" value="false" />
+                                            <input class="form-check-input" type="checkbox" name="Schedules[@i].Include" value="true" checked />
+                                            <label class="form-check-label fw-semibold">Áp dụng lịch này</label>
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <div class="col-md-8">
+                                                <label class="form-label">Tiêu đề</label>
+                                                <input class="form-control" name="Schedules[@i].Title" value="@schedule.Title" maxlength="120" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Nhắc trước phút</label>
+                                                <input class="form-control" type="number" min="0" max="10080" name="Schedules[@i].ReminderMinutes" value="@schedule.ReminderMinutes" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Bắt đầu</label>
+                                                <input class="form-control" type="datetime-local" name="Schedules[@i].StartTime" value="@schedule.StartTime.ToString("yyyy-MM-ddTHH:mm")" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Kết thúc</label>
+                                                <input class="form-control" type="datetime-local" name="Schedules[@i].EndTime" value="@schedule.EndTime.ToString("yyyy-MM-ddTHH:mm")" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Địa điểm</label>
+                                                <input class="form-control" name="Schedules[@i].Location" value="@schedule.Location" maxlength="200" />
+                                            </div>
+                                            <div class="col-md-6 d-flex align-items-end">
+                                                <div class="form-check">
+                                                    <input type="hidden" name="Schedules[@i].IsImportant" value="false" />
+                                                    <input class="form-check-input" type="checkbox" name="Schedules[@i].IsImportant" value="true" checked="@schedule.IsImportant" />
+                                                    <label class="form-check-label">Lịch quan trọng</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Mô tả</label>
+                                                <textarea class="form-control" rows="2" name="Schedules[@i].Description" maxlength="500">@schedule.Description</textarea>
+                                            </div>
+                                        </div>
+
+                                        @if (schedule.Tasks.Any())
+                                        {
+                                            <div class="ai-task-editor">
+                                                <h3>Task trong lịch</h3>
+                                                @for (var j = 0; j < schedule.Tasks.Count; j++)
+                                                {
+                                                    var task = schedule.Tasks[j];
+                                                    <div class="ai-task-row">
+                                                        <div class="form-check">
+                                                            <input type="hidden" name="Schedules[@i].Tasks[@j].Include" value="false" />
+                                                            <input class="form-check-input" type="checkbox" name="Schedules[@i].Tasks[@j].Include" value="true" checked />
+                                                        </div>
+                                                        <div>
+                                                            <label class="form-label">Task</label>
+                                                            <input class="form-control" name="Schedules[@i].Tasks[@j].Title" value="@task.Title" maxlength="160" />
+                                                        </div>
+                                                        <div>
+                                                            <label class="form-label">Deadline</label>
+                                                            <input class="form-control" type="datetime-local" name="Schedules[@i].Tasks[@j].Deadline" value="@task.Deadline.ToString("yyyy-MM-ddTHH:mm")" />
+                                                        </div>
+                                                        <div>
+                                                            <label class="form-label">Ưu tiên</label>
+                                                            <select class="form-select" name="Schedules[@i].Tasks[@j].Priority">
+                                                                <option value="@TaskPriorityLevel.Low" selected="@(task.Priority == TaskPriorityLevel.Low ? "selected" : null)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Low)</option>
+                                                                <option value="@TaskPriorityLevel.Medium" selected="@(task.Priority == TaskPriorityLevel.Medium ? "selected" : null)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Medium)</option>
+                                                                <option value="@TaskPriorityLevel.High" selected="@(task.Priority == TaskPriorityLevel.High ? "selected" : null)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.High)</option>
+                                                                <option value="@TaskPriorityLevel.Urgent" selected="@(task.Priority == TaskPriorityLevel.Urgent ? "selected" : null)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Urgent)</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="ai-task-description">
+                                                            <label class="form-label">Mô tả task</label>
+                                                            <textarea class="form-control" rows="2" name="Schedules[@i].Tasks[@j].Description" maxlength="700">@task.Description</textarea>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <button class="btn btn-primary" type="submit">Áp dụng vào calendar</button>
+                            </form>
+                        }
+                    </article>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <h3>@(Model.ConversationId.HasValue ? "Đoạn chat này chưa có tin nhắn" : "Bắt đầu một đoạn chat mới")</h3>
+                    <p>Hỏi AI để tạo lịch ôn thi, chia nhỏ deadline hoặc phân tích task quá hạn.</p>
+                </div>
+            }
+        </div>
+
+        <form class="ai-chat-input" asp-action="Send" method="post">
+            <input type="hidden" asp-for="Embed" />
+            <input type="hidden" asp-for="ConversationId" />
+            <label asp-for="Prompt" class="form-label">Yêu cầu cho AI</label>
+            <div class="ai-chat-composer">
+                <textarea asp-for="Prompt" class="form-control" rows="3" placeholder="@quickPrompt" data-ai-chat-prompt></textarea>
+                <button class="btn btn-primary ai-chat-send" type="submit">Gửi</button>
+            </div>
+            <div class="ai-chat-suggestion-row">
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-ai-prompt="@quickPrompt">Dùng ví dụ ôn thi</button>
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-ai-prompt="Phân tích các task quá hạn của tôi và gợi ý thứ tự xử lý theo deadline.">Phân tích quá hạn</button>
+            </div>
+        </form>
+    </div>
+
+</section>
+
+<script>
+    (() => {
+        const promptInput = document.querySelector('[data-ai-chat-prompt]');
+        const inputForm = promptInput?.closest('form');
+
+        if (promptInput && inputForm) {
+            promptInput.addEventListener('keydown', (event) => {
+                if (
+                    event.key !== 'Enter' ||
+                    event.shiftKey ||
+                    event.ctrlKey ||
+                    event.altKey ||
+                    event.metaKey ||
+                    event.isComposing
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                if (!promptInput.value.trim()) {
+                    return;
+                }
+
+                if (inputForm.requestSubmit) {
+                    inputForm.requestSubmit();
+                } else {
+                    inputForm.submit();
+                }
+            });
+        }
+
+        document.querySelectorAll('[data-ai-prompt]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const input = document.querySelector('#Prompt');
+                if (input) {
+                    input.value = button.dataset.aiPrompt || '';
+                    input.focus();
+                }
+            });
+        });
+
+        const scrollChatToLatest = () => {
+            const thread = document.querySelector('[data-ai-chat-thread]');
+            if (!thread) {
+                return;
+            }
+
+            thread.scrollTop = thread.scrollHeight;
+
+            const messages = thread.querySelectorAll('.ai-message');
+            const latest = messages[messages.length - 1] || thread.querySelector('.empty-state');
+
+            latest?.scrollIntoView({
+                block: 'end',
+                inline: 'nearest'
+            });
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', scrollChatToLatest);
+        } else {
+            scrollChatToLatest();
+        }
+
+        window.addEventListener('load', () => {
+            window.setTimeout(scrollChatToLatest, 50);
+        });
+    })();
+</script>
+
+@if (Model.Embed)
+{
+    @:</main>
+    @:</body>
+    @:</html>
+}
