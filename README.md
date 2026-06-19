@@ -223,8 +223,24 @@ dotnet run --launch-profile http
 Mở trình duyệt:
 
 ```text
-http://localhost:5399
+http://localhost:5299
 ```
+
+### 7. Cau hinh Google OAuth redirect URI
+
+Trong Google Cloud Console, OAuth Client ID phai co Authorized redirect URI dung chinh xac:
+
+```text
+http://localhost:5299/signin-google
+```
+
+Neu chay bang IIS Express, them ca:
+
+```text
+http://localhost:39024/signin-google
+```
+
+Neu sai port hoac sai duong dan callback, Google se bao loi `redirect_uri_mismatch`.
 
 ## Cấu Hình SMTP Gmail
 

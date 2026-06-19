@@ -54,6 +54,7 @@ namespace schedule
                     {
                         options.ClientId = googleClientId;
                         options.ClientSecret = googleClientSecret;
+                        options.CallbackPath = "/signin-google";
                     });
             }
 
