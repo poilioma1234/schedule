@@ -13,9 +13,10 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "http://0.0.0.0:5299",
+      "applicationUrl": "http://localhost:5299",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SCHEDULE_ENABLE_LAN_ACCESS": "true"
       }
     },
     "IIS Express": {

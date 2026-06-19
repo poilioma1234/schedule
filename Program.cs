@@ -13,6 +13,14 @@ namespace schedule
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            if (builder.Configuration.GetValue<bool>("SCHEDULE_ENABLE_LAN_ACCESS"))
+            {
+                builder.WebHost.ConfigureKestrel(options =>
+                {
+                    options.ListenAnyIP(5299);
+                });
+            }
+
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
             builder.Logging.AddDebug();
