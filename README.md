@@ -226,6 +226,14 @@ Mở trình duyệt:
 http://localhost:5299
 ```
 
+Truy cap tu may khac cung Wi-Fi/LAN bang IP cua may dang chay app, vi du:
+
+```text
+http://10.12.97.3:5299
+```
+
+Neu IP thay doi, chay `ipconfig` va lay IPv4 Address cua card Wi-Fi/Ethernet.
+
 ### 7. Cau hinh Google OAuth redirect URI
 
 Trong Google Cloud Console, OAuth Client ID phai co Authorized redirect URI dung chinh xac:
