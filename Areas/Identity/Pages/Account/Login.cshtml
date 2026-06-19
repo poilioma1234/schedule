@@ -12,12 +12,12 @@
         <form asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="mb-3">
             <button type="submit" class="btn google-auth-btn w-100" name="provider" value="Google">
                 <span class="google-auth-mark">G</span>
-                <span class="google-auth-label">ÄÄƒng nháº­p báº±ng tÃ i khoáº£n Google</span>
+                <span class="google-auth-label">Đăng nhập bằng tài khoản Google</span>
             </button>
         </form>
 
         <div class="auth-divider">
-            <span>hoáº·c</span>
+            <span>hoặc</span>
         </div>
 
         <form method="post">
@@ -42,7 +42,7 @@
             </div>
 
             <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Đăng nhập</button>
-            
+
             <div class="text-center small">
                 <span class="text-muted">Chưa có tài khoản? </span>
                 <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="text-primary text-decoration-none fw-semibold">Đăng ký ngay</a>
