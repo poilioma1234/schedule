@@ -63,6 +63,12 @@ namespace schedule
                         options.ClientId = googleClientId;
                         options.ClientSecret = googleClientSecret;
                         options.CallbackPath = "/signin-google";
+                        options.Events.OnRedirectToAuthorizationEndpoint = context =>
+                        {
+                            var separator = context.RedirectUri.Contains('?') ? '&' : '?';
+                            context.Response.Redirect($"{context.RedirectUri}{separator}prompt=select_account");
+                            return Task.CompletedTask;
+                        };
                     });
             }
 
