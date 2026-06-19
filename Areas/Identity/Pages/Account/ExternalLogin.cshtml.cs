@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -45,6 +47,12 @@ namespace schedule.Areas.Identity.Pages.Account
             if (!schemes.Any(scheme => scheme.Name == provider))
             {
                 ErrorMessage = "Google Login chưa được cấu hình. Hãy thêm Google Client ID/Secret trong User Secrets rồi chạy lại app.";
+                return RedirectToPage("./Login", new { returnUrl });
+            }
+
+            if (provider.Equals("Google", StringComparison.OrdinalIgnoreCase) && IsPrivateIpHost(Request.Host.Host))
+            {
+                ErrorMessage = "Google khong ho tro dang nhap OAuth bang dia chi IP noi bo. Hay mo bang http://localhost:5299 tren may dang chay app, hoac dung ten mien HTTPS public nhu ngrok/Cloudflare Tunnel va them /signin-google vao Google Cloud.";
                 return RedirectToPage("./Login", new { returnUrl });
             }
 
@@ -145,6 +153,40 @@ namespace schedule.Areas.Identity.Pages.Account
             {
                 await _userManager.AddToRoleAsync(user, "User");
             }
+        }
+
+        private static bool IsPrivateIpHost(string? host)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                return false;
+            }
+
+            host = host.Trim('[', ']');
+
+            if (!IPAddress.TryParse(host, out var ipAddress) || IPAddress.IsLoopback(ipAddress))
+            {
+                return false;
+            }
+
+            if (ipAddress.AddressFamily == AddressFamily.InterNetwork)
+            {
+                var bytes = ipAddress.GetAddressBytes();
+                return bytes[0] == 10
+                    || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
+                    || (bytes[0] == 192 && bytes[1] == 168)
+                    || (bytes[0] == 169 && bytes[1] == 254);
+            }
+
+            if (ipAddress.AddressFamily == AddressFamily.InterNetworkV6)
+            {
+                var bytes = ipAddress.GetAddressBytes();
+                return ipAddress.IsIPv6LinkLocal
+                    || ipAddress.IsIPv6SiteLocal
+                    || (bytes[0] & 0xfe) == 0xfc;
+            }
+
+            return false;
         }
     }
 }

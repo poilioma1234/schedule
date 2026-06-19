@@ -234,6 +234,8 @@ http://10.12.97.3:5299
 
 Neu IP thay doi, chay `ipconfig` va lay IPv4 Address cua card Wi-Fi/Ethernet.
 
+Luu y: Google OAuth khong cho phep callback ve IP noi bo/private IP nhu `10.x.x.x`, `172.16.x.x` hoac `192.168.x.x`. Khi can dang nhap Google, hay dung `http://localhost:5299` tren may dang chay app, hoac dung mot domain HTTPS public/tunnel nhu ngrok hoac Cloudflare Tunnel.
+
 ### 7. Cau hinh Google OAuth redirect URI
 
 Trong Google Cloud Console, OAuth Client ID phai co Authorized redirect URI dung chinh xac:
