@@ -109,6 +109,10 @@ SQL Server
 
 Các tích hợp ngoài hệ thống gồm Google OAuth, Gemini/OpenRouter và máy chủ SMTP.
 
+## Tài liệu flow chức năng
+
+Luồng xử lý chi tiết từ giao diện, controller, service đến database được mô tả tại [`Docs/FUNCTION_FLOWS.md`](Docs/FUNCTION_FLOWS.md).
+
 ## Yêu cầu môi trường
 
 - .NET SDK 8.x
