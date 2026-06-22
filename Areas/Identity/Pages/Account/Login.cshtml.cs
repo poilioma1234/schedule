@@ -10,9 +10,9 @@ namespace schedule.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class LoginModel : PageModel
     {
+        private readonly ILogger<LoginModel> _logger;
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<LoginModel> _logger;
 
         public LoginModel(
             SignInManager<IdentityUser> signInManager,
@@ -36,15 +36,15 @@ namespace schedule.Areas.Identity.Pages.Account
 
         public class InputModel
         {
-            [Required(ErrorMessage = "Vui lòng nhập email.")]
-            [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+            [Required(ErrorMessage = "Vui l\u00f2ng nh\u1eadp email.")]
+            [EmailAddress(ErrorMessage = "Email kh\u00f4ng h\u1ee3p l\u1ec7.")]
             public string Email { get; set; } = string.Empty;
 
-            [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
+            [Required(ErrorMessage = "Vui l\u00f2ng nh\u1eadp m\u1eadt kh\u1ea9u.")]
             [DataType(DataType.Password)]
             public string Password { get; set; } = string.Empty;
 
-            [Display(Name = "Ghi nhớ đăng nhập")]
+            [Display(Name = "Ghi nh\u1edb \u0111\u0103ng nh\u1eadp")]
             public bool RememberMe { get; set; }
         }
 
@@ -84,19 +84,17 @@ namespace schedule.Areas.Identity.Pages.Account
 
                     return LocalRedirect(returnUrl);
                 }
+
                 if (result.IsLockedOut)
                 {
                     _logger.LogWarning("User account locked out.");
                     return RedirectToPage("./Lockout");
                 }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "Thông tin đăng nhập không chính xác.");
-                    return Page();
-                }
+
+                ModelState.AddModelError(string.Empty, "Th\u00f4ng tin \u0111\u0103ng nh\u1eadp kh\u00f4ng ch\u00ednh x\u00e1c.");
+                return Page();
             }
 
-            // If we got this far, something failed, redisplay form
             return Page();
         }
     }

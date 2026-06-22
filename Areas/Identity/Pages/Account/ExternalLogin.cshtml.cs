@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -35,34 +35,14 @@ namespace schedule.Areas.Identity.Pages.Account
             return RedirectToPage("./Login");
         }
 
+        public async Task<IActionResult> OnGetStartAsync(string provider, string? returnUrl = null)
+        {
+            return await StartExternalLoginAsync(provider, returnUrl);
+        }
+
         public async Task<IActionResult> OnPostAsync(string provider, string? returnUrl = null)
         {
-            if (string.IsNullOrWhiteSpace(provider))
-            {
-                ErrorMessage = "Chưa cấu hình provider đăng nhập ngoài.";
-                return RedirectToPage("./Login", new { returnUrl });
-            }
-
-            var schemes = await _signInManager.GetExternalAuthenticationSchemesAsync();
-            if (!schemes.Any(scheme => scheme.Name == provider))
-            {
-                ErrorMessage = "Google Login chưa được cấu hình. Hãy thêm Google Client ID/Secret trong User Secrets rồi chạy lại app.";
-                return RedirectToPage("./Login", new { returnUrl });
-            }
-
-            if (provider.Equals("Google", StringComparison.OrdinalIgnoreCase) && IsPrivateIpHost(Request.Host.Host))
-            {
-                ErrorMessage = "Google khong ho tro dang nhap OAuth bang dia chi IP noi bo. Hay mo bang http://localhost:5299 tren may dang chay app, hoac dung ten mien HTTPS public nhu ngrok/Cloudflare Tunnel va them /signin-google vao Google Cloud.";
-                return RedirectToPage("./Login", new { returnUrl });
-            }
-
-            var redirectUrl = Url.Page(
-                "./ExternalLogin",
-                pageHandler: "Callback",
-                values: new { returnUrl });
-
-            var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
-            return new ChallengeResult(provider, properties);
+            return await StartExternalLoginAsync(provider, returnUrl);
         }
 
         public async Task<IActionResult> OnGetCallbackAsync(string? returnUrl = null, string? remoteError = null)
@@ -71,14 +51,14 @@ namespace schedule.Areas.Identity.Pages.Account
 
             if (!string.IsNullOrWhiteSpace(remoteError))
             {
-                ErrorMessage = $"Google trả lỗi: {remoteError}";
+                ErrorMessage = $"Google tr\u1ea3 l\u1ed7i: {remoteError}";
                 return RedirectToPage("./Login", new { returnUrl = ReturnUrl });
             }
 
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if (info == null)
             {
-                ErrorMessage = "Không đọc được thông tin đăng nhập từ Google. Vui lòng thử lại.";
+                ErrorMessage = "Kh\u00f4ng \u0111\u1ecdc \u0111\u01b0\u1ee3c th\u00f4ng tin \u0111\u0103ng nh\u1eadp t\u1eeb Google. Vui l\u00f2ng th\u1eed l\u1ea1i.";
                 return RedirectToPage("./Login", new { returnUrl = ReturnUrl });
             }
 
@@ -95,14 +75,14 @@ namespace schedule.Areas.Identity.Pages.Account
 
             if (signInResult.IsLockedOut)
             {
-                ErrorMessage = "Tài khoản đang bị khóa tạm thời. Vui lòng thử lại sau.";
+                ErrorMessage = "T\u00e0i kho\u1ea3n \u0111ang b\u1ecb kh\u00f3a t\u1ea1m th\u1eddi. Vui l\u00f2ng th\u1eed l\u1ea1i sau.";
                 return RedirectToPage("./Login", new { returnUrl = ReturnUrl });
             }
 
             var email = info.Principal.FindFirstValue(ClaimTypes.Email);
             if (string.IsNullOrWhiteSpace(email))
             {
-                ErrorMessage = "Google không trả về email cho tài khoản này.";
+                ErrorMessage = "Google kh\u00f4ng tr\u1ea3 v\u1ec1 email cho t\u00e0i kho\u1ea3n n\u00e0y.";
                 return RedirectToPage("./Login", new { returnUrl = ReturnUrl });
             }
 
@@ -140,6 +120,48 @@ namespace schedule.Areas.Identity.Pages.Account
             await _signInManager.SignInAsync(user, isPersistent: false, info.LoginProvider);
 
             return LocalRedirect(ReturnUrl);
+        }
+
+        private async Task<IActionResult> StartExternalLoginAsync(string provider, string? returnUrl)
+        {
+            if (string.IsNullOrWhiteSpace(provider))
+            {
+                ErrorMessage = "Ch\u01b0a c\u1ea5u h\u00ecnh provider \u0111\u0103ng nh\u1eadp ngo\u00e0i.";
+                return RedirectToPage("./Login", new { returnUrl });
+            }
+
+            var schemes = await _signInManager.GetExternalAuthenticationSchemesAsync();
+            if (!schemes.Any(scheme => scheme.Name == provider))
+            {
+                ErrorMessage = "Google Login ch\u01b0a \u0111\u01b0\u1ee3c c\u1ea5u h\u00ecnh. H\u00e3y th\u00eam Google Client ID/Secret trong User Secrets r\u1ed3i ch\u1ea1y l\u1ea1i app.";
+                return RedirectToPage("./Login", new { returnUrl });
+            }
+
+            if (provider.Equals("Google", StringComparison.OrdinalIgnoreCase) && IsPrivateIpHost(Request.Host.Host))
+            {
+                var localHost = Request.Host.Port.HasValue
+                    ? $"localhost:{Request.Host.Port.Value}"
+                    : "localhost";
+                var localLoginUrl = Url.Page(
+                    "./ExternalLogin",
+                    pageHandler: "Start",
+                    values: new { provider, returnUrl },
+                    protocol: Request.Scheme,
+                    host: localHost);
+
+                if (!string.IsNullOrWhiteSpace(localLoginUrl))
+                {
+                    return Redirect(localLoginUrl);
+                }
+            }
+
+            var redirectUrl = Url.Page(
+                "./ExternalLogin",
+                pageHandler: "Callback",
+                values: new { returnUrl });
+
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+            return new ChallengeResult(provider, properties);
         }
 
         private async Task EnsureUserRoleAsync(IdentityUser user)

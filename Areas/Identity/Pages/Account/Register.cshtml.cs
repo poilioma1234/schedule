@@ -77,17 +77,17 @@ namespace schedule.Areas.Identity.Pages.Account
 
         public class InputModel
         {
-            [Required(ErrorMessage = "Vui lòng nhập email.")]
-            [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+            [Required(ErrorMessage = "Vui l\u00f2ng nh\u1eadp email.")]
+            [EmailAddress(ErrorMessage = "Email kh\u00f4ng h\u1ee3p l\u1ec7.")]
             public string Email { get; set; } = string.Empty;
 
-            [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
-            [StringLength(100, ErrorMessage = "Mật khẩu phải có ít nhất {2} ký tự.", MinimumLength = 6)]
+            [Required(ErrorMessage = "Vui l\u00f2ng nh\u1eadp m\u1eadt kh\u1ea9u.")]
+            [StringLength(100, ErrorMessage = "M\u1eadt kh\u1ea9u ph\u1ea3i c\u00f3 \u00edt nh\u1ea5t {2} k\u00fd t\u1ef1.", MinimumLength = 6)]
             [DataType(DataType.Password)]
             public string Password { get; set; } = string.Empty;
 
             [DataType(DataType.Password)]
-            [Compare("Password", ErrorMessage = "Mật khẩu nhập lại không khớp.")]
+            [Compare("Password", ErrorMessage = "M\u1eadt kh\u1ea9u nh\u1eadp l\u1ea1i kh\u00f4ng kh\u1edbp.")]
             public string ConfirmPassword { get; set; } = string.Empty;
         }
     }

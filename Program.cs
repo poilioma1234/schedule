@@ -15,6 +15,14 @@ namespace schedule
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            if (builder.Configuration.GetValue<bool>("SCHEDULE_ENABLE_LAN_ACCESS"))
+            {
+                builder.WebHost.ConfigureKestrel(options =>
+                {
+                    options.ListenAnyIP(5299);
+                });
+            }
+
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
             builder.Logging.AddDebug();
@@ -60,6 +68,12 @@ namespace schedule
                         options.ClientId = googleClientId;
                         options.ClientSecret = googleClientSecret;
                         options.CallbackPath = "/signin-google";
+                        options.Events.OnRedirectToAuthorizationEndpoint = context =>
+                        {
+                            var separator = context.RedirectUri.Contains('?') ? '&' : '?';
+                            context.Response.Redirect($"{context.RedirectUri}{separator}prompt=select_account");
+                            return Task.CompletedTask;
+                        };
                     });
             }
 
