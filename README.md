@@ -1,474 +1,352 @@
 # Schedule Manager
 
-Schedule Manager là ứng dụng web ASP.NET Core MVC dùng để quản lý lịch học, deadline, công việc cá nhân và các sự kiện quan trọng. Người dùng có thể tạo lịch, xem theo danh sách hoặc calendar, nhận nhắc lịch qua email và xuất lịch ra PDF.
+Schedule Manager là ứng dụng web quản lý lịch trình và năng suất cá nhân được xây dựng bằng ASP.NET Core MVC. Hệ thống tập trung lịch, công việc, deadline, nhắc việc, báo cáo và trợ lý AI vào một không gian làm việc thống nhất.
 
-## Bài Toán Giải Quyết
+Ứng dụng hỗ trợ hai nhóm người dùng chính:
 
-Trong học tập và công việc, người dùng thường có nhiều lịch học, deadline, lịch họp, lịch cá nhân khác nhau. Nếu chỉ ghi nhớ thủ công hoặc ghi rải rác ở nhiều nơi thì rất dễ quên, trùng lịch hoặc bỏ sót việc quan trọng.
+- **Người dùng:** quản lý lịch và task, theo dõi tiến độ, xem báo cáo, sử dụng AI và tùy chỉnh hồ sơ cá nhân.
+- **Quản trị viên:** quản lý tài khoản, dữ liệu hệ thống, báo cáo vi phạm và các chỉ số tổng quan.
 
-Dự án này giúp:
+## Chức năng nổi bật
 
-- Quản lý toàn bộ lịch trình ở một nơi.
-- Xem nhanh lịch hôm nay, lịch đang diễn ra và lịch sắp tới.
-- Đánh dấu lịch quan trọng.
-- Nhắc lịch qua email.
-- Xuất lịch trình ra PDF.
-- Phân quyền Admin/User để quản lý tài khoản.
+### Quản lý lịch trình
 
-## Công Nghệ Sử Dụng
+- Tạo, xem, chỉnh sửa và xóa lịch trình.
+- Hiển thị lịch theo danh sách hoặc calendar.
+- Tìm kiếm và lọc lịch theo thời gian.
+- Đánh dấu lịch quan trọng, địa điểm và người nhận email nhắc lịch.
+- Xem trang chi tiết cùng các task thuộc lịch.
+- Xuất lịch trình sang PDF.
 
-- ASP.NET Core MVC .NET 8
-- Entity Framework Core
-- SQL Server LocalDB
-- ASP.NET Core Identity
-- Bootstrap
-- FullCalendar
-- QuestPDF
-- Gmail SMTP
+### Quản lý công việc
 
-## Chức Năng Chính
+- Tạo task độc lập hoặc gắn task vào một lịch trình.
+- Theo dõi bốn trạng thái: chưa bắt đầu, đang thực hiện, hoàn thành và quá hạn.
+- Phân loại bốn mức ưu tiên: thấp, trung bình, cao và khẩn cấp.
+- Quản lý deadline, màu hiển thị, mô tả và liên kết đính kèm.
+- Lọc task theo trạng thái, thời gian và mức độ quá hạn.
+- Tự động gửi email cảnh báo task quá hạn chưa hoàn thành.
 
-### Người dùng
+### Dashboard và báo cáo
 
-- Đăng ký, đăng nhập, đăng xuất.
-- Thêm lịch mới.
-- Sửa lịch.
-- Xóa lịch.
-- Xem danh sách lịch.
-- Tìm kiếm lịch theo tiêu đề.
-- Lọc lịch theo ngày bắt đầu.
-- Xem lịch theo calendar.
-- Đánh dấu lịch quan trọng.
-- Nhập email nhận nhắc lịch.
-- Xuất lịch ra PDF.
+- Tổng quan lịch hôm nay, lịch sắp tới và task cần chú ý.
+- Thống kê năng suất theo ngày, tuần, tháng hoặc khoảng thời gian tùy chọn.
+- Biểu đồ tỷ lệ hoàn thành, xu hướng hoạt động và phân bố trạng thái.
+- Báo cáo chi tiết lịch, task và hiệu suất cá nhân.
+- Xuất báo cáo người dùng và báo cáo quản trị sang PDF.
 
-### Admin
+### Trợ lý AI
 
-- Xem danh sách người dùng.
-- Gán quyền Admin.
-- Khóa/mở khóa tài khoản.
-- Xóa tài khoản.
-- Xem lịch của người dùng khác.
+- Chat với AI bằng ngữ cảnh lịch và task hiện tại của người dùng.
+- Phân tích task quá hạn và đề xuất kế hoạch xử lý.
+- Sinh gợi ý lịch trình, công việc và deadline có cấu trúc.
+- Cho phép xem trước và áp dụng kế hoạch AI vào hệ thống.
+- Lưu cuộc hội thoại và lịch sử tin nhắn.
+- Hỗ trợ Gemini API hoặc OpenRouter thông qua cấu hình endpoint.
 
-### Service chạy nền
+### Hồ sơ và cộng đồng
 
-Ứng dụng có `ReminderService` chạy nền mỗi 1 phút để kiểm tra lịch cần nhắc. Nếu lịch chưa gửi nhắc, có email người nhận, chưa kết thúc và đã đến thời điểm cần nhắc, hệ thống sẽ gửi email.
+- Hồ sơ cá nhân gồm tên hiển thị, tiểu sử, avatar và ảnh bìa.
+- Liên kết Facebook, YouTube, TikTok, website và nhạc cá nhân.
+- Đường dẫn hồ sơ công khai bằng slug.
+- Bật hoặc tắt chế độ hồ sơ công khai.
+- Tìm kiếm và xem hồ sơ người dùng khác.
+- Gửi báo cáo vi phạm tới quản trị viên.
 
-## Cấu Trúc Thư Mục
+### Bảng xếp hạng
 
-```text
-schedule/
-├── Controllers/
-│   ├── AdminController.cs
-│   ├── HomeController.cs
-│   └── ScheduleController.cs
-├── Data/
-│   ├── ApplicationDbContext.cs
-│   ├── ApplicationDbContextFactory.cs
-│   └── IdentitySeedData.cs
-├── Helpers/
-│   └── SchedulePdfGenerator.cs
-├── Migrations/
-│   └── ...
-├── Models/
-│   ├── EmailSettings.cs
-│   ├── ErrorViewModel.cs
-│   └── ScheduleItem.cs
-├── Services/
-│   ├── EmailService.cs
-│   ├── IEmailService.cs
-│   └── ReminderService.cs
-├── ViewModels/
-│   ├── AdminUserViewModel.cs
-│   └── HomeDashboardViewModel.cs
-├── Views/
-│   ├── Admin/
-│   ├── Home/
-│   ├── Schedule/
-│   └── Shared/
-├── wwwroot/
-│   ├── css/
-│   ├── js/
-│   └── lib/
-├── appsettings.json
-├── Program.cs
-├── schedule.csproj
-└── schedule.sln
-```
+- Xếp hạng người dùng dựa trên số task hoàn thành và đúng hạn.
+- Xem kết quả theo khoảng thời gian.
+- Lưu giải thưởng và thứ hạng theo tháng.
 
-## Database
+### Xác thực và quản trị
 
-Dự án dùng SQL Server LocalDB với connection string mặc định:
+- Đăng ký, đăng nhập và đăng xuất bằng ASP.NET Core Identity.
+- Đăng nhập bằng Google OAuth.
+- Phân quyền `Admin` và `User`.
+- Khóa, mở khóa, xóa tài khoản và thay đổi vai trò.
+- Quản lý lịch, task và hoạt động của người dùng.
+- Tiếp nhận, cảnh báo, khóa tài khoản hoặc bỏ qua báo cáo vi phạm.
+- Gửi email thông báo cho các hành động quản trị.
 
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=ScheduleManagerRebuildDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
-}
-```
+### REST API
 
-Database chính là `ScheduleManagerRebuildDb`.
+- API cho lịch trình, task, hồ sơ, bảng xếp hạng, AI và quản trị.
+- DTO riêng cho dữ liệu đầu vào và đầu ra.
+- Phân quyền bằng ASP.NET Core Identity.
+- Tài liệu tương tác bằng Swagger UI.
 
-Các bảng chính:
+## Công nghệ sử dụng
 
-- `AspNetUsers`: tài khoản người dùng.
-- `AspNetRoles`: vai trò.
-- `AspNetUserRoles`: liên kết user và role.
-- `ScheduleItems`: dữ liệu lịch trình.
+| Thành phần | Công nghệ |
+| --- | --- |
+| Nền tảng | .NET 8, ASP.NET Core MVC, Razor Pages |
+| Xác thực | ASP.NET Core Identity, Google OAuth |
+| Cơ sở dữ liệu | SQL Server, Entity Framework Core 8 |
+| Giao diện | Razor, Bootstrap, JavaScript, jQuery, FullCalendar |
+| Trợ lý AI | Gemini API hoặc OpenRouter |
+| Email | SMTP, Gmail App Password |
+| PDF | QuestPDF, SkiaSharp |
+| API | ASP.NET Core Web API, Swagger/OpenAPI |
 
-## Tài Khoản Admin Mặc Định
-
-Khi chạy app lần đầu, hệ thống tự tạo tài khoản admin:
+## Kiến trúc tổng quan
 
 ```text
-Email: admin@example.com
-Password: Admin@123
+Browser / API client
+        |
+        v
+MVC Controllers / API Controllers / Identity Razor Pages
+        |
+        v
+Services + Helpers + ViewModels/DTOs
+        |
+        v
+Entity Framework Core + ASP.NET Core Identity
+        |
+        v
+SQL Server
 ```
 
-Code tạo tài khoản nằm trong:
+Các tích hợp ngoài hệ thống gồm Google OAuth, Gemini/OpenRouter và máy chủ SMTP.
 
-```text
-Data/IdentitySeedData.cs
-```
+## Yêu cầu môi trường
 
-## Setup Khi Clone Từ GitHub
-
-### 1. Cài công cụ cần thiết
-
-Cần có:
-
-- Visual Studio 2022 hoặc mới hơn
-- .NET SDK 8
-- SQL Server LocalDB
+- .NET SDK 8.x
+- SQL Server hoặc SQL Server LocalDB
+- Visual Studio 2022, Visual Studio Code hoặc IDE hỗ trợ .NET
 - Git
+- `dotnet-ef` 8.x nếu muốn thao tác migration bằng dòng lệnh
 
-Kiểm tra .NET:
-
-```powershell
-dotnet --version
-```
-
-Cài Entity Framework CLI nếu chưa có:
+Cài Entity Framework CLI nếu máy chưa có:
 
 ```powershell
 dotnet tool install --global dotnet-ef --version 8.*
 ```
 
-Nếu đã cài rồi:
+## Cài đặt và chạy dự án
+
+### 1. Clone repository
 
 ```powershell
-dotnet tool update --global dotnet-ef --version 8.*
-```
-
-### 2. Clone project
-
-```powershell
-git clone <github-url>
+git clone <repository-url>
 cd schedule
 ```
 
-Nếu project nằm trong solution khác, vào đúng thư mục có file:
-
-```text
-schedule.csproj
-schedule.sln
-```
-
-### 3. Restore package
+### 2. Khôi phục package
 
 ```powershell
 dotnet restore
 ```
 
-### 4. Kiểm tra connection string
+### 3. Cấu hình cơ sở dữ liệu
 
-Mở `appsettings.json`, kiểm tra:
+Khuyến nghị lưu connection string bằng User Secrets khi chạy local:
 
-```json
-"DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=ScheduleManagerRebuildDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```powershell
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=(localdb)\MSSQLLocalDB;Database=ScheduleManagerDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
 ```
 
-Nếu muốn đổi tên database, đổi phần:
-
-```text
-Database=ScheduleManagerRebuildDb
-```
-
-Ví dụ:
-
-```text
-Database=MyScheduleDb
-```
-
-### 5. Tạo database
-
-Nếu project đã có thư mục `Migrations/`, chạy:
+Áp dụng migration:
 
 ```powershell
 dotnet ef database update
 ```
 
-Nếu clone về chưa có migration, tạo migration trước:
+Ứng dụng cũng tự động chạy migration khi khởi động.
 
-```powershell
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
-
-### 6. Chạy project
+### 4. Chạy ứng dụng
 
 ```powershell
 dotnet run --launch-profile http
 ```
 
-Mở trình duyệt:
+Truy cập:
 
 ```text
 http://localhost:5299
 ```
 
-Truy cap tu may khac cung Wi-Fi/LAN bang IP cua may dang chay app, vi du:
+Swagger UI:
 
 ```text
-http://10.12.97.3:5299
+http://localhost:5299/swagger
 ```
 
-Neu IP thay doi, chay `ipconfig` va lay IPv4 Address cua card Wi-Fi/Ethernet.
+## Cấu hình dịch vụ ngoài
 
-Luu y: Google OAuth khong cho phep callback ve IP noi bo/private IP nhu `10.x.x.x`, `172.16.x.x` hoac `192.168.x.x`. Khi can dang nhap Google, hay dung `http://localhost:5299` tren may dang chay app, hoac dung mot domain HTTPS public/tunnel nhu ngrok hoac Cloudflare Tunnel.
+### Google OAuth
 
-### 7. Cau hinh Google OAuth redirect URI
+Lưu Client ID và Client Secret bằng User Secrets:
 
-Trong Google Cloud Console, OAuth Client ID phai co Authorized redirect URI dung chinh xac:
+```powershell
+dotnet user-secrets set "Authentication:Google:ClientId" "YOUR_GOOGLE_CLIENT_ID"
+dotnet user-secrets set "Authentication:Google:ClientSecret" "YOUR_GOOGLE_CLIENT_SECRET"
+```
+
+Thêm redirect URI sau trong Google Cloud Console:
 
 ```text
 http://localhost:5299/signin-google
 ```
 
-Neu chay bang IIS Express, them ca:
+Nếu chạy bằng IIS Express, thêm đúng callback tương ứng với cổng được cấu hình trong `Properties/launchSettings.json`.
 
-```text
-http://localhost:39024/signin-google
-```
+Google OAuth không hỗ trợ callback trực tiếp tới địa chỉ IP riêng như `10.x.x.x` hoặc `192.168.x.x`. Khi thử nghiệm qua LAN, hãy đăng nhập Google bằng `localhost` trên máy chạy ứng dụng hoặc dùng một domain HTTPS/tunnel công khai.
 
-Neu sai port hoac sai duong dan callback, Google se bao loi `redirect_uri_mismatch`.
+### Email SMTP
 
-## Cấu Hình SMTP Gmail
-
-Ứng dụng gửi email bằng Gmail SMTP. Không nên commit mật khẩu Gmail hoặc App Password lên GitHub.
-
-### 1. Bật xác minh 2 bước cho Gmail
-
-Vào tài khoản Google:
-
-```text
-Google Account > Security > 2-Step Verification
-```
-
-Bật xác minh 2 bước.
-
-### 2. Tạo App Password
-
-Sau khi bật xác minh 2 bước:
-
-```text
-Google Account > Security > App passwords
-```
-
-Chọn app là `Mail`, device có thể chọn `Windows Computer`, sau đó Google sẽ tạo mật khẩu 16 ký tự.
-
-Ví dụ dạng:
-
-```text
-abcd efgh ijkl mnop
-```
-
-Khi đưa vào cấu hình có thể giữ hoặc bỏ khoảng trắng.
-
-### 3. Cấu hình bằng User Secrets
-
-Khuyến nghị dùng User Secrets khi chạy local:
+Với Gmail, cần bật xác minh hai bước và tạo App Password. Sau đó cấu hình:
 
 ```powershell
-dotnet user-secrets init
 dotnet user-secrets set "EmailSettings:EnableEmail" "true"
 dotnet user-secrets set "EmailSettings:SmtpServer" "smtp.gmail.com"
 dotnet user-secrets set "EmailSettings:SmtpPort" "587"
-dotnet user-secrets set "EmailSettings:SenderEmail" "your-email@gmail.com"
+dotnet user-secrets set "EmailSettings:SenderEmail" "YOUR_EMAIL"
 dotnet user-secrets set "EmailSettings:SenderName" "Schedule Manager"
-dotnet user-secrets set "EmailSettings:SenderPassword" "your-app-password"
+dotnet user-secrets set "EmailSettings:SenderPassword" "YOUR_APP_PASSWORD"
 ```
 
-Sau đó chạy lại app:
+`ReminderService` chạy nền mỗi phút để:
+
+- Gửi email khi lịch đã đến thời điểm cần nhắc.
+- Cảnh báo task đã quá hạn trong vòng bảy ngày gần nhất.
+- Đánh dấu thời điểm đã xử lý để tránh gửi trùng lặp.
+
+### Gemini AI
+
+Cấu hình trực tiếp với Gemini API:
 
 ```powershell
-dotnet run --launch-profile http
+dotnet user-secrets set "Gemini:ApiKey" "YOUR_GEMINI_API_KEY"
+dotnet user-secrets set "Gemini:Model" "gemini-3.1-flash-lite"
+dotnet user-secrets set "Gemini:MaxOutputTokens" "1400"
+dotnet user-secrets set "Gemini:Temperature" "0.35"
 ```
 
-### 4. Cấu hình trực tiếp trong appsettings.json
+Khi `Gemini:Endpoint` để trống, ứng dụng sử dụng endpoint Google Generative Language mặc định.
 
-Chỉ dùng cách này khi test local, không nên push lên GitHub:
+### OpenRouter
 
-```json
-"EmailSettings": {
-  "EnableEmail": true,
-  "SmtpServer": "smtp.gmail.com",
-  "SmtpPort": 587,
-  "SenderEmail": "your-email@gmail.com",
-  "SenderName": "Schedule Manager",
-  "SenderPassword": "your-app-password"
-}
+Để sử dụng OpenRouter thay cho Gemini trực tiếp:
+
+```powershell
+dotnet user-secrets set "Gemini:ApiKey" "YOUR_OPENROUTER_API_KEY"
+dotnet user-secrets set "Gemini:Endpoint" "https://openrouter.ai/api/v1/chat/completions"
+dotnet user-secrets set "Gemini:Model" "YOUR_OPENROUTER_MODEL"
 ```
 
-## Cách Reminder Email Hoạt Động
+Xem hướng dẫn AI chi tiết tại [`Docs/AI_CHATBOT_SETUP.md`](Docs/AI_CHATBOT_SETUP.md).
 
-Mỗi lịch có các trường:
+## REST API
 
-- `StartTime`: thời gian bắt đầu.
-- `EndTime`: thời gian kết thúc.
-- `ReceiverEmail`: email nhận nhắc.
-- `ReminderMinutes`: nhắc trước bao nhiêu phút.
-- `ReminderSentAt`: thời điểm đã gửi email.
+Các nhóm endpoint chính:
 
-`ReminderService` chạy mỗi 1 phút. Một lịch sẽ được gửi email nếu:
+| Endpoint | Chức năng | Quyền |
+| --- | --- | --- |
+| `/api/schedules` | CRUD lịch trình và dữ liệu calendar | User |
+| `/api/tasks` | CRUD task và cập nhật trạng thái | User |
+| `/api/profile` | Hồ sơ cá nhân, hồ sơ công khai và báo cáo | User/Public |
+| `/api/leaderboard` | Dữ liệu bảng xếp hạng | User |
+| `/api/ai` | Hội thoại và phản hồi AI | User |
+| `/api/admin` | Người dùng và xử lý báo cáo | Admin |
 
-- Có `ReceiverEmail`.
-- Chưa từng gửi email nhắc (`ReminderSentAt == null`).
-- Lịch chưa kết thúc (`EndTime >= DateTime.Now`).
-- Đã đến thời điểm nhắc (`StartTime <= DateTime.Now.AddMinutes(ReminderMinutes)`).
+Phần lớn endpoint yêu cầu người dùng đăng nhập. Endpoint quản trị yêu cầu role `Admin`.
 
-Ví dụ lúc `01:06`, nếu có lịch:
+## Cơ sở dữ liệu
+
+Các nhóm bảng chính:
+
+- ASP.NET Identity: `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles` và các bảng xác thực liên quan.
+- `ScheduleItems`: lịch trình của người dùng.
+- `TaskItems`: công việc và deadline thuộc lịch trình.
+- `UserProfiles`: dữ liệu hồ sơ và quyền riêng tư.
+- `LeaderboardAwards`: giải thưởng xếp hạng theo kỳ.
+- `UserReports`: báo cáo vi phạm và trạng thái xử lý.
+- `AiChatConversations`, `AiChatMessages`: lịch sử hội thoại AI.
+
+Project hiện có migration cho Identity, hồ sơ, task, quyền riêng tư, bảng xếp hạng, báo cáo người dùng, AI Chat và email task quá hạn.
+
+## Cấu trúc dự án
 
 ```text
-00:00 - 01:07
-01:05 - 01:15
+schedule/
+|-- Areas/Identity/       # Trang đăng nhập, đăng ký và Google OAuth
+|-- Controllers/         # MVC controllers
+|   `-- Api/             # REST API controllers
+|-- Data/                # DbContext, factory và dữ liệu khởi tạo
+|-- Docs/                # Tài liệu cấu hình bổ sung
+|-- DTOs/                # Request/response models cho API
+|-- Helpers/             # Thống kê, hiển thị và tạo PDF
+|-- Migrations/          # Entity Framework Core migrations
+|-- Models/              # Các entity và cấu hình hệ thống
+|-- Services/            # Email, AI, leaderboard và background service
+|-- ViewModels/          # Dữ liệu dành cho giao diện MVC
+|-- Views/               # Razor views
+|-- wwwroot/             # CSS, JavaScript, hình ảnh và thư viện frontend
+|-- Program.cs           # Cấu hình và pipeline ứng dụng
+|-- schedule.csproj      # Package và cấu hình project
+`-- schedule.sln         # Visual Studio solution
 ```
 
-Hai lịch này vẫn đang diễn ra nên dashboard sẽ hiện trong phần lịch cần chú ý. Nếu email chưa từng gửi và SMTP cấu hình đúng, service có thể gửi nhắc.
+## Build và publish
 
-Lịch:
-
-```text
-00:58 - 01:00
-```
-
-Tại `01:06` đã kết thúc nên sẽ không còn hiện trong dashboard và không gửi email nữa.
-
-## Vì Sao Email Có Thể Không Gửi?
-
-Một số nguyên nhân thường gặp:
-
-- `EmailSettings:EnableEmail` đang là `false`.
-- Chưa cấu hình đúng Gmail App Password.
-- Gmail chưa bật xác minh 2 bước.
-- App không chạy tại thời điểm cần nhắc.
-- Lịch đã kết thúc.
-- `ReminderSentAt` đã có giá trị, nghĩa là lịch đó đã từng được xử lý gửi nhắc.
-- Email người nhận bị nhập sai.
-- SMTP bị Google chặn vì cấu hình bảo mật.
-- Máy không có internet.
-
-## Cách Test Email
-
-1. Bật SMTP bằng User Secrets hoặc `appsettings.json`.
-2. Tạo lịch mới có:
-   - `StartTime` cách hiện tại khoảng 3-5 phút.
-   - `EndTime` sau `StartTime`.
-   - `ReceiverEmail` là email thật.
-   - `ReminderMinutes` là `5`.
-3. Giữ app đang chạy.
-4. Chờ service chạy trong vòng 1 phút.
-5. Kiểm tra inbox/spam.
-
-## Lưu Ý Về Dashboard
-
-Dashboard hiện hiển thị:
-
-- `Tổng lịch`: toàn bộ lịch của user.
-- `Lịch hôm nay`: lịch có ngày bắt đầu là hôm nay.
-- `Đang/sắp diễn ra`: lịch chưa kết thúc.
-- `Đang diễn ra`: lịch có `StartTime <= hiện tại <= EndTime`.
-- `Lịch cần chú ý`: tối đa 5 lịch đang diễn ra hoặc sắp diễn ra, sắp xếp theo thời gian bắt đầu.
-
-## Hạn Chế Hiện Tại
-
-- Chưa có thông báo realtime trên trình duyệt, mới có nhắc qua email.
-- Email reminder phụ thuộc vào app đang chạy.
-- Nếu app tắt trong thời điểm nhắc và lịch đã kết thúc, email sẽ không gửi bù.
-- Chưa có chọn múi giờ riêng cho từng người dùng.
-- Chưa có lặp lịch theo ngày/tuần/tháng.
-- Chưa có phân loại lịch theo màu hoặc tag.
-- Chưa có API riêng cho mobile app.
-- Chưa có unit test/integration test.
-- Trang đăng nhập/đăng ký mặc định của ASP.NET Identity vẫn còn một số chữ tiếng Anh nếu chưa scaffold/custom Identity UI.
-- SMTP đang dùng Gmail nên có thể bị giới hạn số lượng email/ngày.
-
-## Lỗi Thường Gặp
-
-### dotnet ef không chạy
-
-Lỗi:
-
-```text
-dotnet-ef does not exist
-```
-
-Cách sửa:
+Kiểm tra project:
 
 ```powershell
-dotnet tool install --global dotnet-ef --version 8.*
-```
-
-Đóng terminal rồi mở lại.
-
-### Không connect được database
-
-Kiểm tra LocalDB:
-
-```powershell
-sqllocaldb info
-```
-
-Nếu có `MSSQLLocalDB`, chạy:
-
-```powershell
-sqllocaldb start MSSQLLocalDB
-```
-
-Sau đó:
-
-```powershell
-dotnet ef database update
-```
-
-### Build lỗi do file đang bị khóa
-
-Nếu app đang chạy, build có thể báo file `.exe` bị khóa.
-
-Cách sửa:
-
-```powershell
-Get-Process schedule -ErrorAction SilentlyContinue | Stop-Process -Force
 dotnet build
 ```
 
-### Đổi database nhưng dữ liệu cũ vẫn còn
-
-Nếu muốn tạo database mới, đổi tên database trong connection string rồi chạy:
+Publish bản Release:
 
 ```powershell
-dotnet ef database update
+dotnet publish -c Release -o publish
 ```
 
-## Gợi Ý Nâng Cấp
+Thư mục `publish/` là sản phẩm build cục bộ và không nên commit vào repository.
+
+## Bảo mật
+
+Không lưu các giá trị sau trực tiếp trong Git:
+
+- Connection string của môi trường thật.
+- SMTP email và App Password.
+- Gemini hoặc OpenRouter API Key.
+- Google OAuth Client Secret.
+
+Khi phát triển local, sử dụng .NET User Secrets. Khi triển khai, sử dụng biến môi trường hoặc secret manager của nền tảng hosting.
+
+Ví dụ ánh xạ cấu hình sang biến môi trường:
+
+```text
+ConnectionStrings__DefaultConnection
+EmailSettings__SenderPassword
+Gemini__ApiKey
+Authentication__Google__ClientSecret
+```
+
+> **Lưu ý:** `Data/IdentitySeedData.cs` chứa dữ liệu demo phục vụ quá trình phát triển. Hãy thay đổi hoặc vô hiệu hóa tài khoản, mật khẩu và dữ liệu mẫu trước khi triển khai production.
+
+Nếu một khóa đã từng được commit, cần thu hồi khóa đó và xóa khỏi lịch sử Git; chỉ tạo thêm một commit xóa khóa là chưa đủ.
+
+## Hạn chế hiện tại
+
+- Email nhắc việc phụ thuộc vào tiến trình ứng dụng đang chạy.
+- Chưa có thông báo realtime trên trình duyệt.
+- Chưa hỗ trợ lịch lặp định kỳ.
+- Chưa có múi giờ riêng cho từng tài khoản.
+- Chưa có test project tự động.
+- Swagger và API hiện dùng cùng cơ chế Identity của ứng dụng; chưa có luồng JWT riêng cho client bên ngoài.
+
+## Hướng phát triển
 
 - Thêm thông báo realtime bằng SignalR.
-- Thêm toast notification trong dashboard.
-- Thêm recurring schedule.
-- Thêm màu/tag cho từng loại lịch.
-- Thêm trang thống kê theo tuần/tháng.
-- Thêm export Excel.
-- Thêm tìm kiếm nâng cao.
-- Thêm xác nhận email khi đăng ký.
-- Thêm reset password.
-- Deploy lên Azure App Service hoặc IIS.
+- Thêm lịch lặp theo ngày, tuần hoặc tháng.
+- Thêm tag và màu tùy chỉnh cho lịch trình.
+- Thêm xác nhận email và khôi phục mật khẩu hoàn chỉnh.
+- Bổ sung unit test, integration test và CI/CD.
+- Tách nghiệp vụ dùng chung thành service để MVC và API tái sử dụng.
+- Triển khai trên Azure App Service, IIS hoặc Linux reverse proxy.
 
+---
+
+Đây là dự án học tập nhằm thực hành ASP.NET Core MVC, Entity Framework Core, Identity, tích hợp dịch vụ ngoài và xây dựng hệ thống quản lý năng suất hoàn chỉnh.
