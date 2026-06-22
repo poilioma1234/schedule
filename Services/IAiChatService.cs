@@ -18,6 +18,10 @@ namespace schedule.Services
         public List<AiTaskContextViewModel> OverdueTasks { get; set; } = new();
 
         public List<AiScheduleContextViewModel> UpcomingSchedules { get; set; } = new();
+
+        public bool IsAdmin { get; set; }
+
+        public string? SystemSummaryPrompt { get; set; }
     }
 
     public class AiSchedulePlanResponse

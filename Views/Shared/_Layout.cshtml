@@ -36,15 +36,19 @@
             scheduleQuery = scheduleQuery.Where(item => item.CreatedByUserId == userId);
         }
 
-        var overdueCount = await taskQuery.CountAsync(item => item.Status != schedule.Models.TaskItemStatus.Completed && item.Deadline < now);
-        var todayScheduleCount = await scheduleQuery.CountAsync(item => item.StartTime.Date == today);
-        alertCount = overdueCount + todayScheduleCount;
+        var overdueCount = await taskQuery.CountAsync(item => item.Status != schedule.Models.TaskItemStatus.Completed && item.Deadline.Date == today && item.Deadline < now);
+        alertCount = overdueCount;
     }
 
     var initial = string.IsNullOrWhiteSpace(displayName) ? "U" : displayName.Substring(0, 1).ToUpperInvariant();
     string Active(params string[] controllers) => controllers.Contains(currentController, StringComparer.OrdinalIgnoreCase) ? "active" : "";
     string ActiveSchedule() => currentController == "Schedule" && currentAction != "Calendar" ? "active" : "";
     string ActiveCalendar() => currentController == "Schedule" && currentAction == "Calendar" ? "active" : "";
+
+    var currentPath = Context.Request.Path.Value ?? "";
+    var isLoginPage = currentPath.Contains("/Account/Login", StringComparison.OrdinalIgnoreCase);
+    var isRegisterPage = currentPath.Contains("/Account/Register", StringComparison.OrdinalIgnoreCase);
+    var isAuthPage = isLoginPage || isRegisterPage;
 }
 
 <!DOCTYPE html>
@@ -56,11 +60,14 @@
     <link rel="icon" type="image/png" href="~/favicon.png" />
     <link rel="shortcut icon" type="image/png" href="~/favicon.png" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/schedule.styles.css" asp-append-version="true" />
 </head>
-<body class="@(isAuthenticated ? "app-shell-body" : "")">
+<body class="@(isAuthenticated ? "app-shell-body" : (isAuthPage ? "auth-body-modern" : ""))">
     @if (isAuthenticated)
     {
         var showAdminSidebar = isAdmin && (currentController == "Admin" || currentController == "Profile");
@@ -179,7 +186,7 @@
                         </nav>
                     }
                     <div class="app-top-actions">
-                        <a class="app-icon-link has-count" asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="overdue" aria-label="Thông báo" title="Task quá hạn">
+                        <a class="app-icon-link has-count" asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="overdue" asp-route-dateFilter="today" aria-label="Thông báo" title="Task quá hạn hôm nay">
                             <span style="font-size: 1.35rem; line-height: 1;">🔔</span>
                             @if (alertCount > 0)
                             {
@@ -218,6 +225,44 @@
                 </main>
             </div>
         </div>
+    }
+    else if (isAuthPage)
+    {
+        <header class="auth-header-modern">
+            <div class="auth-header-container">
+                <a class="auth-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4" y="6" width="24" height="22" rx="6" fill="#2563eb" />
+                        <rect x="8" y="3" width="3" height="6" rx="1.5" fill="#1e40af" />
+                        <rect x="21" y="3" width="3" height="6" rx="1.5" fill="#1e40af" />
+                        <rect x="9" y="12" width="3" height="3" rx="0.5" fill="white" />
+                        <rect x="14" y="12" width="3" height="3" rx="0.5" fill="white" />
+                        <rect x="20" y="12" width="3" height="3" rx="0.5" fill="white" />
+                        <rect x="9" y="18" width="3" height="3" rx="0.5" fill="white" />
+                        <rect x="14" y="18" width="3" height="3" rx="0.5" fill="white" />
+                        <rect x="20" y="18" width="3" height="3" rx="0.5" fill="white" />
+                        <rect x="9" y="24" width="3" height="3" rx="0.5" fill="white" opacity="0.6" />
+                        <rect x="14" y="24" width="3" height="3" rx="0.5" fill="white" opacity="0.6" />
+                        <rect x="20" y="24" width="3" height="3" rx="0.5" fill="white" opacity="0.6" />
+                    </svg>
+                    <span>schedule</span>
+                </a>
+                <nav class="auth-header-nav">
+                    <a class="auth-nav-item @(isRegisterPage ? "active" : "")" asp-area="Identity" asp-page="/Account/Register">Đăng ký</a>
+                    <a class="auth-nav-item @(isLoginPage ? "active" : "")" asp-area="Identity" asp-page="/Account/Login">Đăng nhập</a>
+                </nav>
+            </div>
+        </header>
+
+        <main role="main" class="auth-main-modern">
+            @RenderBody()
+        </main>
+
+        <footer class="auth-footer-modern">
+            <div class="auth-footer-container">
+                &copy; 2026 - schedule &middot; <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            </div>
+        </footer>
     }
     else
     {
@@ -270,11 +315,11 @@
                     <div class="modal-header">
                         <div>
                             <h2 class="modal-title fs-5" id="aiChatPopupLabel">AI Chat</h2>
-                            <span class="text-muted small">Táº¡o lá»‹ch, task vÃ  phÃ¢n tÃ­ch deadline</span>
+                            <span class="text-muted small">T&#7841;o l&#7883;ch, task v&#224; ph&#226;n t&#237;ch deadline</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="AiChat" asp-action="Index">Má»Ÿ rá»™ng</a>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ÄÃ³ng"></button>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="AiChat" asp-action="Index">M&#7903; r&#7897;ng</a>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="&#272;&#243;ng"></button>
                         </div>
                     </div>
                     <div class="modal-body">

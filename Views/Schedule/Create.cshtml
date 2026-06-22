@@ -21,4 +21,23 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    <script>
+        const ckConfig = {
+            toolbar: {
+                items: ['heading', '|', 'bold', 'italic', 'underline', '|',
+                        'bulletedList', 'numberedList', '|',
+                        'link', 'blockQuote', '|', 'undo', 'redo']
+            },
+            language: 'vi'
+        };
+
+        const scheduleDescEl = document.querySelector('#ck-schedule-desc');
+        if (scheduleDescEl) {
+            ClassicEditor.create(scheduleDescEl, {
+                ...ckConfig,
+                placeholder: 'Nhập mô tả lịch trình...'
+            }).catch(err => console.error('CKEditor Schedule:', err));
+        }
+    </script>
 }

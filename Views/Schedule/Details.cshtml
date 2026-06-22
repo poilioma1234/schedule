@@ -1,0 +1,132 @@
+@model schedule.Models.ScheduleItem
+@using schedule.Helpers
+@using schedule.Models
+
+@{
+    ViewData["Title"] = "Chi tiết lịch trình";
+    var canEdit = User.IsInRole("Admin") || Model.StartTime.Date == DateTime.Today;
+}
+
+<div class="page-heading">
+    <div>
+        <h1>Chi tiết lịch trình</h1>
+        <p class="text-muted mb-0">Xem thông tin chi tiết lịch trình và danh sách task vụ kèm theo.</p>
+    </div>
+    <div class="d-flex gap-2">
+        @if (canEdit)
+        {
+            <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa lịch trình</a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white p-4">
+    <div class="row g-3">
+        <!-- Title & Importance -->
+        <div class="col-md-6">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Tiêu đề lịch trình</span>
+            <h3 class="fw-bold text-dark mt-1">@Model.Title</h3>
+        </div>
+        <div class="col-md-3">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Độ ưu tiên</span>
+            <div class="mt-1">
+                @if (Model.IsImportant)
+                {
+                    <span class="badge bg-warning text-dark fw-bold px-3 py-2"><i class="bi bi-star-fill me-1"></i> Quan trọng</span>
+                }
+                else
+                {
+                    <span class="badge bg-light text-secondary border px-3 py-2">Thường</span>
+                }
+            </div>
+        </div>
+        <div class="col-md-3">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Nhắc trước</span>
+            <p class="text-dark mt-1 fw-semibold">Trước @Model.ReminderMinutes phút</p>
+        </div>
+
+        <!-- Times & Meta -->
+        <div class="col-md-6 col-lg-3">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Thời gian bắt đầu</span>
+            <p class="text-dark mt-1 fw-bold">@Model.StartTime.ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Thời gian kết thúc</span>
+            <p class="text-dark mt-1 fw-bold">@Model.EndTime.ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Địa điểm</span>
+            <p class="text-dark mt-1 fw-semibold">@(string.IsNullOrWhiteSpace(Model.Location) ? "Không có địa điểm" : Model.Location)</p>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <span class="text-muted small text-uppercase fw-bold font-monospace d-block">Người tạo</span>
+            <p class="text-dark mt-1 font-monospace text-truncate">@Model.CreatedByEmail</p>
+        </div>
+
+        <!-- Description -->
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <div class="col-12 border-top pt-3">
+                <span class="text-muted small text-uppercase fw-bold font-monospace d-block mb-2">Mô tả chi tiết</span>
+                <div class="schedule-desc-box p-3 rounded-3" style="max-height: 400px; overflow-y: auto;">
+                    @Html.Raw(Model.Description)
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<section class="task-board">
+    <div class="panel-section w-100">
+        <div class="section-title">
+            <h2>Task trong lịch</h2>
+            <span class="text-muted">@Model.Tasks.Count task</span>
+        </div>
+
+        @if (Model.Tasks.Any())
+        {
+            <div class="task-list">
+                @foreach (var task in Model.Tasks.OrderBy(task => task.Deadline))
+                {
+                    var effectiveStatus = TaskDisplayHelper.EffectiveStatus(task, DateTime.Now);
+                    var canEditTask = User.IsInRole("Admin") || Model.StartTime.Date == DateTime.Today;
+                    <article class="task-card @(effectiveStatus == TaskItemStatus.Overdue ? "is-overdue" : "")" style="border-left-color:@task.Color">
+                        <div>
+                            <div class="task-title-row">
+                                <strong>@task.Title</strong>
+                                <span class="task-badge">@TaskDisplayHelper.StatusText(effectiveStatus)</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(task.Description))
+                            {
+                                <div class="task-description-content">@Html.Raw(task.Description)</div>
+                            }
+                            <div class="task-meta">
+                                <span>Deadline: @task.Deadline.ToString("dd/MM/yyyy HH:mm")</span>
+                                <span>Ưu tiên: @TaskDisplayHelper.PriorityText(task.Priority)</span>
+                                @if (!string.IsNullOrWhiteSpace(task.AttachmentUrl))
+                                {
+                                    <a href="@task.AttachmentUrl" target="_blank" rel="noopener">Link đính kèm</a>
+                                }
+                            </div>
+                        </div>
+                        @if (canEditTask)
+                        {
+                            <div class="task-actions">
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id">Sửa</a>
+                                <a class="btn btn-sm btn-outline-danger" asp-controller="Tasks" asp-action="Delete" asp-route-id="@task.Id">Xóa</a>
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state compact">
+                <h3>Chưa có task nào</h3>
+                <p>Không có task vụ nào được liên kết với lịch trình này.</p>
+            </div>
+        }
+    </div>
+</section>

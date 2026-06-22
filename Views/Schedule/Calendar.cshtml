@@ -7,6 +7,177 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
+<style>
+    /* Premium FullCalendar Styling matching the reference image */
+    .fc-theme-standard .fc-scrollgrid {
+        border-radius: 12px;
+        border: 1px solid #f1f5f9;
+        overflow: hidden;
+    }
+    
+    .app-dark .fc-theme-standard .fc-scrollgrid {
+        border-color: #2d3748;
+    }
+
+    /* Style the day headers */
+    .fc .fc-col-header-cell {
+        background-color: #f8fafc;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .app-dark .fc .fc-col-header-cell {
+        background-color: #1f2937;
+        border-bottom-color: #374151;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569 !important;
+    }
+    .app-dark .fc .fc-col-header-cell-cushion {
+        color: #94a3b8 !important;
+    }
+
+    /* Current day header highlight */
+    .fc .fc-day-today {
+        background-color: rgba(37, 99, 235, 0.02) !important;
+    }
+    .fc .fc-day-today .fc-col-header-cell-cushion {
+        color: #2563eb !important;
+    }
+
+    /* Time grid slot customization */
+    .fc .fc-timegrid-slot {
+        height: 52px !important;
+    }
+    .fc .fc-timegrid-slot-label-cushion {
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Grid borders */
+    .fc-theme-standard td, .fc-theme-standard th {
+        border-color: #f1f5f9 !important;
+    }
+    .app-dark .fc-theme-standard td, .app-dark .fc-theme-standard th {
+        border-color: #2d3748 !important;
+    }
+
+    /* Event element visual overrides - make FullCalendar default wrappers transparent */
+    .fc-v-event, .fc-h-event {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .fc-timegrid-event, .fc-daygrid-block-event {
+        transition: transform 0.15s ease, filter 0.15s ease !important;
+    }
+
+    /* Remove default FullCalendar event content margins/padding */
+    .fc-event-main {
+        padding: 0 !important;
+        height: 100% !important;
+    }
+
+    /* Set overflow hidden on timed events so they do not spill over in standard view */
+    .fc-timegrid-event {
+        overflow: hidden !important;
+    }
+
+    /* Hover float expand feature: dynamically expands events when user hovers */
+    .fc-timegrid-event:hover {
+        overflow: visible !important;
+        z-index: 9999 !important;
+    }
+    
+    .fc-timegrid-event:hover .fc-event-main-frame {
+        position: absolute !important;
+        top: 0;
+        left: 0;
+        width: max(100%, 250px) !important;
+        height: auto !important;
+        min-height: 100% !important;
+        overflow: visible !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+        z-index: 99999 !important;
+        padding: 6px 8px !important;
+    }
+
+    .app-dark .fc-timegrid-event:hover .fc-event-main-frame {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    /* Header toolbar styles */
+    .fc .fc-toolbar {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .fc-toolbar-title {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+    }
+    .app-dark .fc-toolbar-title {
+        color: #f8fafc !important;
+    }
+
+    /* Button styles matching reference image */
+    .fc-button-group {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .fc .fc-button-primary {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        padding: 8px 16px !important;
+        box-shadow: none !important;
+        text-transform: capitalize !important;
+        transition: all 0.2s ease !important;
+    }
+    .app-dark .fc .fc-button-primary {
+        background-color: #1f2937 !important;
+        border-color: #374151 !important;
+        color: #d1d5db !important;
+    }
+
+    .fc .fc-button-primary:hover {
+        background-color: #f8fafc !important;
+        color: #1e293b !important;
+    }
+    .app-dark .fc .fc-button-primary:hover {
+        background-color: #374151 !important;
+        color: #ffffff !important;
+    }
+
+    .fc .fc-button-primary.fc-button-active {
+        background-color: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+    }
+    .app-dark .fc .fc-button-primary.fc-button-active {
+        background-color: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: #ffffff !important;
+    }
+
+    .fc .fc-today-button {
+        border-radius: 6px !important;
+        margin-left: 12px !important;
+    }
+
+    .fc .fc-prev-button, .fc .fc-next-button {
+        border-radius: 6px !important;
+    }
+</style>
+
 <div class="container-fluid px-4 py-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -64,6 +235,61 @@
             const isAdminOverview = @Json.Serialize(isAdminOverview);
             const eventUrl = userId ? `/Schedule/GetEvents?userId=${userId}` : '/Schedule/GetEvents';
 
+            function hexToRgba(hex, opacity) {
+                if (!hex) return 'rgba(13, 110, 253, ' + opacity + ')';
+                hex = hex.replace('#', '');
+                if (hex.length === 3) {
+                    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                }
+                if (hex.length !== 6) return 'rgba(13, 110, 253, ' + opacity + ')';
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            }
+
+            function getPastelColor(hex, isDarkMode) {
+                if (!hex) hex = '#0d6efd';
+                hex = hex.replace('#', '');
+                if (hex.length === 3) {
+                    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                }
+                if (hex.length !== 6) hex = '0d6efd';
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                
+                if (isDarkMode) {
+                    // Blend 15% original color with 85% dark background #111827 (17, 24, 39)
+                    const mixFactor = 0.85;
+                    const bgR = 17, bgG = 24, bgB = 39;
+                    const rPastel = Math.round(r * (1 - mixFactor) + bgR * mixFactor);
+                    const gPastel = Math.round(g * (1 - mixFactor) + bgG * mixFactor);
+                    const bPastel = Math.round(b * (1 - mixFactor) + bgB * mixFactor);
+                    return `rgb(${rPastel}, ${gPastel}, ${bPastel})`;
+                } else {
+                    // Blend 10% original color with 90% white (255, 255, 255)
+                    const mixFactor = 0.90;
+                    const rPastel = Math.round(r * (1 - mixFactor) + 255 * mixFactor);
+                    const gPastel = Math.round(g * (1 - mixFactor) + 255 * mixFactor);
+                    const bPastel = Math.round(b * (1 - mixFactor) + 255 * mixFactor);
+                    return `rgb(${rPastel}, ${gPastel}, ${bPastel})`;
+                }
+            }
+
+            function formatTimeRange(start, end) {
+                if (!start) return '';
+                const formatTime = (date) => {
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${hours}:${minutes}`;
+                };
+                const startStr = formatTime(start);
+                if (!end) return startStr;
+                const endStr = formatTime(end);
+                return `${startStr} - ${endStr}`;
+            }
+
             function showAdminMenu(event) {
                 const props = event.extendedProps || {};
                 const users = props.users || [];
@@ -90,10 +316,12 @@
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
+                eventDisplay: 'block',
                 height: 'auto',
                 locale: 'vi',
                 displayEventTime: !isAdminOverview,
-                dayMaxEvents: true, // Cap events per day and show "+ more" popup
+                slotEventOverlap: false, // Prevent overlapping events from visually stacking on top of each other
+                dayMaxEvents: 3, // Giới hạn tối đa hiển thị 3 lịch trình/ngày, nhiều hơn sẽ gom vào "+ xem thêm"
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
@@ -115,24 +343,52 @@
 
                     const title = arg.event.title;
                     const tasks = arg.event.extendedProps.tasks || [];
+                    const color = arg.event.backgroundColor || arg.event.color || '#0d6efd';
+                    const isDarkMode = document.body.classList.contains('app-dark') || document.documentElement.classList.contains('app-dark');
+                    const solidBg = getPastelColor(color, isDarkMode);
                     
-                    let htmlContent = `<div class="fc-event-main-frame text-white" style="padding: 2px 4px; overflow: hidden; width: 100%;">`;
-                    htmlContent += `<div class="fw-bold text-truncate" style="font-size:0.8rem; line-height: 1.2;">${title}</div>`;
+                    // Style Month View differently from Week/Day View
+                    if (arg.view.type === 'dayGridMonth') {
+                        return {
+                            html: `<div class="fc-event-main-frame text-truncate" style="padding: 2px 6px; font-size: 0.72rem; font-weight: 600; color: ${color} !important; background-color: ${solidBg} !important; border: 1px solid ${color} !important; border-radius: 4px; width: 100%;">${title}</div>`
+                        };
+                    }
                     
-                    // Show task items list under schedule title in week and day views
-                    if (arg.view.type !== 'dayGridMonth' && tasks.length > 0) {
-                        htmlContent += `<div class="mt-2 border-top border-white-50 pt-1" style="font-size:0.7rem; opacity:0.95;">`;
+                    // Week/Day view: Show time, title (category) and task lists inside
+                    let htmlContent = `<div class="fc-event-main-frame" style="padding: 4px 6px; width: 100%; height: 100%; display: flex; flex-direction: column; gap: 2px; color: ${color} !important; background-color: ${solidBg} !important; border: 1px solid ${color} !important; border-radius: 6px; overflow: hidden; box-sizing: border-box;">`;
+                    
+                    if (!arg.event.allDay) {
+                        const timeText = formatTimeRange(arg.event.start, arg.event.end);
+                        if (timeText) {
+                            htmlContent += `<div style="font-size: 0.65rem; font-weight: 600; opacity: 0.85; color: ${color} !important; margin-bottom: 1px;">${timeText}</div>`;
+                        }
+                    }
+                    
+                    htmlContent += `<div class="fw-bold text-truncate" style="font-size: 0.75rem; line-height: 1.2; color: ${color} !important; margin-bottom: 2px;">${title}</div>`;
+                    
+                    if (tasks.length > 0) {
+                        htmlContent += `<div class="event-tasks-list" style="margin-top: 2px; display: flex; flex-direction: column; gap: 2px;">`;
                         tasks.forEach(t => {
-                            htmlContent += `<div class="d-flex align-items-center mb-1 text-truncate">
-                                <span class="d-inline-block rounded-circle me-1 border border-white" style="width: 8px; height: 8px; background: ${t.color || '#fff'}; min-width: 8px;"></span>
-                                <span>${t.title}</span>
+                            const taskColor = t.color || color;
+                            htmlContent += `<div style="color: ${taskColor} !important; font-size: 0.68rem; line-height: 1.25; display: flex; align-items: start; gap: 3px;">
+                                <span style="color: ${taskColor} !important; line-height: 1; font-size: 0.7rem; flex-shrink: 0; margin-top: -1px;">●</span>
+                                <span style="font-weight: 500;">${t.title}</span>
                             </div>`;
                         });
                         htmlContent += `</div>`;
                     }
+                    
                     htmlContent += `</div>`;
 
                     return { html: htmlContent };
+                },
+                eventDidMount: function (info) {
+                    if (isAdminOverview) return;
+
+                    // Make the outer FullCalendar wrapper transparent so only our custom solid-colored frame is styled
+                    info.el.style.setProperty('background-color', 'transparent', 'important');
+                    info.el.style.setProperty('border-color', 'transparent', 'important');
+                    info.el.style.setProperty('box-shadow', 'none', 'important');
                 },
                 dateClick: function (info) {
                     if (!isAdminOverview) {

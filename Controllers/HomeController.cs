@@ -8,6 +8,7 @@ using schedule.ViewModels;
 
 namespace schedule.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class HomeController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -53,18 +54,18 @@ namespace schedule.Controllers
             query = query.Where(item => item.CreatedByUserId == currentUserId);
             taskQuery = taskQuery.Where(task => task.CreatedByUserId == currentUserId);
 
-            model.TotalSchedules = await query.CountAsync();
+            model.TotalSchedules = await query.CountAsync(item => item.StartTime.Date == today);
             model.TodaySchedules = await query.CountAsync(item => item.StartTime.Date == today);
             model.ActiveSchedules = await query.CountAsync(item => item.StartTime <= now && item.EndTime >= now);
             model.UpcomingSchedules = await query.CountAsync(item => item.EndTime >= now);
-            model.ImportantSchedules = await query.CountAsync(item => item.IsImportant);
+            model.ImportantSchedules = await query.CountAsync(item => item.IsImportant && item.StartTime.Date == today);
             model.TodayTaskCount = await taskQuery.CountAsync(task => task.Deadline.Date == today);
-            model.OverdueTaskCount = await taskQuery.CountAsync(task => task.Status != TaskItemStatus.Completed && task.Deadline < now);
-            model.CompletedTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.Completed);
-            model.InProgressTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.InProgress);
-            model.PendingTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.NotStarted);
+            model.OverdueTaskCount = await taskQuery.CountAsync(task => task.Status != TaskItemStatus.Completed && task.Deadline.Date == today && task.Deadline < now);
+            model.CompletedTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.Completed && task.Deadline.Date == today);
+            model.InProgressTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.InProgress && task.Deadline.Date == today);
+            model.PendingTaskCount = await taskQuery.CountAsync(task => task.Status == TaskItemStatus.NotStarted && task.Deadline.Date == today);
             model.UpcomingItems = await query
-                .Where(item => item.EndTime >= now)
+                .Where(item => item.StartTime.Date == today)
                 .OrderBy(item => item.StartTime)
                 .Take(5)
                 .ToListAsync();
@@ -74,12 +75,12 @@ namespace schedule.Controllers
                 .Take(6)
                 .ToListAsync();
             model.OverdueTasks = await taskQuery
-                .Where(task => task.Status != TaskItemStatus.Completed && task.Deadline < now)
+                .Where(task => task.Status != TaskItemStatus.Completed && task.Deadline.Date == today && task.Deadline < now)
                 .OrderBy(task => task.Deadline)
                 .Take(6)
                 .ToListAsync();
             model.Reminders = await query
-                .Where(item => item.StartTime >= now && item.StartTime <= now.AddDays(2))
+                .Where(item => item.StartTime.Date == today && item.StartTime >= now)
                 .OrderBy(item => item.StartTime)
                 .Take(3)
                 .ToListAsync();

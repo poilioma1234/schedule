@@ -14,6 +14,7 @@ using schedule.ViewModels;
 namespace schedule.Controllers
 {
     [Route("[controller]")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class ProfileController : Controller
     {
         private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -515,6 +516,8 @@ namespace schedule.Controllers
                         _ => "Khác"
                     };
 
+                    var adminLink = $"{Request.Scheme}://{Request.Host}/Admin?section=notifications";
+
                     await _emailService.SendEmailAsync(
                         adminEmail,
                         "[HUTECH Schedule] Có báo cáo người dùng mới",
@@ -526,7 +529,7 @@ namespace schedule.Controllers
                         "<p><strong>Lý do:</strong></p>" +
                         $"<blockquote style='border-left:4px solid #dc2626;padding:12px;background:#fef2f2;border-radius:6px;'>{System.Net.WebUtility.HtmlEncode(reason)}</blockquote>" +
                         $"<p><strong>Thời gian:</strong> {DateTime.Now:dd/MM/yyyy HH:mm}</p>" +
-                        "<a href='/Admin?section=notifications' style='display:inline-block;padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;margin-top:12px;'>Xem tại Admin Dashboard</a>" +
+                        $"<a href='{adminLink}' style='display:inline-block;padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;margin-top:12px;'>Xem tại Admin Dashboard</a>" +
                         "</div>");
                 }
             }

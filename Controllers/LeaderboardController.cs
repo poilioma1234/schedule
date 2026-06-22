@@ -7,6 +7,7 @@ using schedule.ViewModels;
 namespace schedule.Controllers
 {
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class LeaderboardController : Controller
     {
         private readonly ILeaderboardService _leaderboardService;

@@ -2,290 +2,419 @@
 @using System.Text.Json
 
 @{
-    ViewData["Title"] = "Nhật ký & Biểu đồ năng suất";
-    var chartPayload = JsonSerializer.Serialize(new[]
-    {
-        new { id = "dailyTasksChart", chart = Model.DailyTasks, type = "bar" },
-        new { id = "weeklyTasksChart", chart = Model.WeeklyTasks, type = "bar" },
-        new { id = "monthlyTasksChart", chart = Model.MonthlyTasks, type = "line" },
-        new { id = "yearlyTasksChart", chart = Model.YearlyTasks, type = "bar" }
-    });
-    var total = Math.Max(1, Model.TotalTasks);
-    var completedPercent = (int)Math.Round(Model.CompletedTasks * 100.0 / total);
-    var progressPercent = (int)Math.Round(Model.InProgressTasks * 100.0 / total);
-    var pendingPercent = (int)Math.Round(Model.PendingTasks * 100.0 / total);
-    var overduePercent = Math.Max(0, 100 - completedPercent - progressPercent - pendingPercent);
+    ViewData["Title"] = "Theo dõi hoạt động";
+    var percentClass = (double val) => val >= 0 ? "text-success" : "text-danger";
+    var percentSign = (double val) => val >= 0 ? "+" : "";
+    var isCustom = ViewBag.RangePreset == "custom";
 }
 
 <div class="container-fluid px-4 py-4">
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800 fw-bold">Nhật Ký & Hoạt Động</h1>
-            <p class="text-muted mb-0">Biểu đồ năng suất, chuỗi ngày hoàn thành và phân tích công việc của bạn.</p>
-        </div>
-        <div>
-            <a class="btn btn-outline-primary shadow-sm" asp-controller="Home" asp-action="Index">Trang chủ</a>
+    <!-- Page Header & Filters -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-body p-3">
+            <form method="get" action="@Url.Action("Index", "Activity")" id="activityFilterForm" class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="h4 mb-0 fw-bold text-dark">Theo dõi hoạt động</h1>
+                        <p class="text-muted small mb-0">Hiệu suất, tiến độ và xu hướng hoạt động của bạn</p>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <!-- Preset Selection -->
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="rangePreset" class="form-label mb-0 small fw-semibold text-secondary">Khoảng thời gian:</label>
+                        <select id="rangePreset" name="rangePreset" class="form-select form-select-sm shadow-sm" style="min-width: 130px;" onchange="toggleRangePreset()">
+                            <option value="7days" selected="@(ViewBag.RangePreset == "7days")">7 ngày qua</option>
+                            <option value="14days" selected="@(ViewBag.RangePreset == "14days")">14 ngày qua</option>
+                            <option value="30days" selected="@(ViewBag.RangePreset == "30days")">30 ngày qua</option>
+                            <option value="thismonth" selected="@(ViewBag.RangePreset == "thismonth")">Tháng này</option>
+                            <option value="lastmonth" selected="@(ViewBag.RangePreset == "lastmonth")">Tháng trước</option>
+                            <option value="custom" selected="@(ViewBag.RangePreset == "custom")">Tùy chỉnh...</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Date Range Inputs -->
+                    <div id="customRangeInputs" class="d-flex align-items-center gap-2 @(isCustom ? "" : "d-none")">
+                        <label for="startDate" class="form-label mb-0 small fw-semibold text-secondary">Từ ngày:</label>
+                        <input type="date" id="startDate" name="startDate" class="form-control form-control-sm shadow-sm" value="@ViewBag.StartDateFormatted" style="max-width: 140px;" />
+                        <label for="endDate" class="form-label mb-0 small fw-semibold text-secondary">Đến ngày:</label>
+                        <input type="date" id="endDate" name="endDate" class="form-control form-control-sm shadow-sm" value="@ViewBag.EndDateFormatted" style="max-width: 140px;" />
+                        <button type="submit" class="btn btn-sm btn-primary shadow-sm px-3">Lọc</button>
+                    </div>
+
+                    <!-- Group By Selection -->
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="groupBy" class="form-label mb-0 small fw-semibold text-secondary">Nhóm dữ liệu theo:</label>
+                        <select id="groupBy" name="groupBy" class="form-select form-select-sm shadow-sm" style="min-width: 100px;" onchange="document.getElementById('activityFilterForm').submit()">
+                            <option value="auto" selected="@(ViewBag.GroupBy == "auto")">Tự động</option>
+                            <option value="day" selected="@(ViewBag.GroupBy == "day")">Ngày</option>
+                            <option value="week" selected="@(ViewBag.GroupBy == "week")">Tuần</option>
+                            <option value="month" selected="@(ViewBag.GroupBy == "month")">Tháng</option>
+                        </select>
+                    </div>
+
+                    <!-- Compare Toggle Switch -->
+                    <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                        <input class="form-check-input" type="checkbox" id="comparePrev" name="comparePrev" value="true" @(ViewBag.ComparePrev ? "checked" : "") onchange="document.getElementById('activityFilterForm').submit()" />
+                        <label class="form-check-label small fw-semibold text-secondary" for="comparePrev">So sánh với kỳ trước</label>
+                    </div>
+
+                    <a class="btn btn-outline-secondary btn-sm shadow-sm" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Productivity Hero Banner -->
-    <div class="card border-0 rounded-4 shadow-sm text-white mb-4 position-relative overflow-hidden" 
-         style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-        <div class="position-absolute bg-white opacity-10 rounded-circle" style="width: 200px; height: 200px; top: -80px; right: -40px;"></div>
-        <div class="position-absolute bg-white opacity-10 rounded-circle" style="width: 120px; height: 120px; bottom: -40px; left: -20px;"></div>
-        
-        <div class="card-body p-5 position-relative">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <h2 class="display-6 fw-bold mb-2">Theo dõi năng suất theo thời gian</h2>
-                    <p class="lead opacity-90 mb-0">Biểu đồ tổng hợp task, deadline và lịch trình quan trọng của bạn.</p>
-                    <small class="opacity-75 d-block mt-2">Thống kê tự động từ cơ sở dữ liệu cho tài khoản: @Model.UserEmail</small>
-                </div>
-                <div class="col-lg-4 mt-4 mt-lg-0">
-                    <div class="card border-0 bg-white text-dark shadow rounded-4 p-4 text-center">
-                        <span class="text-muted text-uppercase small fw-bold font-monospace">Chuỗi Streak Hiện Tại</span>
-                        <div class="display-5 fw-bold my-2 text-success">
-                            🔥 @Model.CurrentStreakDays ngày
-                        </div>
-                        <p class="small text-muted mb-0">Hoàn thành task hôm nay để tiếp tục giữ chuỗi ngày năng suất!</p>
+    <!-- 5 KPI Cards Grid -->
+    <div class="row row-cols-1 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+        <!-- 1. Total Tasks -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3" style="border-top: 3px solid #3b82f6 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small text-uppercase fw-semibold">Tổng task</span>
+                    <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     </div>
                 </div>
+                <h3 class="fw-bold mb-1">@Model.TotalTasks</h3>
+                @if (ViewBag.ComparePrev)
+                {
+                    <div class="small fw-semibold @percentClass(Model.TotalTasksDiff)">
+                        @(Model.TotalTasksDiff >= 0 ? "↑" : "↓") @(percentSign(Model.TotalTasksDiff))@(Math.Abs(Model.TotalTasksDiff))% <span class="text-muted fw-normal small">so với kỳ trước</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="small text-muted">Nhiệm vụ đã tạo</div>
+                }
+            </div>
+        </div>
+
+        <!-- 2. Completed Tasks -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3" style="border-top: 3px solid #10b981 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small text-uppercase fw-semibold">Task hoàn thành</span>
+                    <div class="p-2 bg-success bg-opacity-10 text-success rounded-circle" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-success">@Model.CompletedTasks</h3>
+                @if (ViewBag.ComparePrev)
+                {
+                    <div class="small fw-semibold @percentClass(Model.CompletedTasksDiff)">
+                        @(Model.CompletedTasksDiff >= 0 ? "↑" : "↓") @(percentSign(Model.CompletedTasksDiff))@(Math.Abs(Model.CompletedTasksDiff))% <span class="text-muted fw-normal small">so với kỳ trước</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="small text-muted">Đã hoàn thành</div>
+                }
+            </div>
+        </div>
+
+        <!-- 3. Overdue Tasks -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3" style="border-top: 3px solid #ef4444 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small text-uppercase fw-semibold">Task quá hạn</span>
+                    <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-circle" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-danger">@Model.OverdueTasks</h3>
+                @if (ViewBag.ComparePrev)
+                {
+                    <div class="small fw-semibold @(Model.OverdueTasksDiff <= 0 ? "text-success" : "text-danger")">
+                        @(Model.OverdueTasksDiff >= 0 ? "↑" : "↓") @(percentSign(Model.OverdueTasksDiff))@(Math.Abs(Model.OverdueTasksDiff))% <span class="text-muted fw-normal small">so với kỳ trước</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="small text-muted">Cần giải quyết gấp</div>
+                }
+            </div>
+        </div>
+
+        <!-- 4. Completion Rate -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3" style="border-top: 3px solid #6366f1 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small text-uppercase fw-semibold">Tỷ lệ hoàn thành</span>
+                    <div class="p-2 bg-indigo bg-opacity-10 text-indigo rounded-circle" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; color: #6366f1;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/></svg>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1" style="color: #6366f1;">@Model.CompletionRate%</h3>
+                @if (ViewBag.ComparePrev)
+                {
+                    <div class="small fw-semibold @percentClass(Model.CompletionRateDiff)">
+                        @(Model.CompletionRateDiff >= 0 ? "↑" : "↓") @(percentSign(Model.CompletionRateDiff))@(Math.Abs(Model.CompletionRateDiff))% <span class="text-muted fw-normal small">so với kỳ trước</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="small text-muted">Hiệu suất hoàn thành</div>
+                }
+            </div>
+        </div>
+
+        <!-- 5. Streaks -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-3 h-100 p-3" style="border-top: 3px solid #f59e0b !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small text-uppercase fw-semibold">Streak hiện tại</span>
+                    <div class="p-2 bg-warning bg-opacity-10 text-warning rounded-circle" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-warning">@Model.CurrentStreakDays ngày</h3>
+                <div class="small text-muted">Hoàn thành liên tục</div>
             </div>
         </div>
     </div>
 
-    <!-- 4 KPI Metrics Grid -->
+    <!-- Row 1: Charts section -->
     <div class="row g-4 mb-4">
-        <!-- Total Tasks -->
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-primary border-3">
-                <div class="card-body p-3 p-md-4">
-                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Tổng task</span>
-                    <h3 class="fw-bold mb-0">@Model.TotalTasks</h3>
-                    <small class="text-muted">Nhiệm vụ đã tạo</small>
-                </div>
-            </div>
-        </div>
-        <!-- Completed Tasks -->
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-success border-3">
-                <div class="card-body p-3 p-md-4">
-                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Task hoàn thành</span>
-                    <h3 class="fw-bold mb-0 text-success">@Model.CompletedTasks</h3>
-                    <small class="text-success fw-semibold">Đạt @completedPercent% tổng số việc</small>
-                </div>
-            </div>
-        </div>
-        <!-- Overdue Tasks -->
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-danger border-3">
-                <div class="card-body p-3 p-md-4">
-                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Task quá hạn</span>
-                    <h3 class="fw-bold mb-0 text-danger">@Model.OverdueTasks</h3>
-                    <small class="text-danger fw-semibold">Cần giải quyết gấp</small>
-                </div>
-            </div>
-        </div>
-        <!-- Record Streak -->
-        <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3 hover-lift h-100 border-start border-warning border-3">
-                <div class="card-body p-3 p-md-4">
-                    <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Streak Kỷ lục</span>
-                    <h3 class="fw-bold mb-0 text-warning">⭐ @Model.BestStreakDays ngày</h3>
-                    <small class="text-muted">Hoàn thành liên tục</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 14-Day Bar Chart Section -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="m-0 fw-bold text-dark">Năng Suất Hoàn Thành Task Hàng Ngày (14 Ngày Qua)</h5>
-            <span class="badge bg-light text-dark font-monospace fw-normal">Dạng Cột (Bar)</span>
-        </div>
-        <div class="card-body p-4">
-            <div class="chart-container" style="position: relative; height:280px; width:100%">
-                <canvas id="dailyTasksChart"></canvas>
-            </div>
-            
-            <!-- Summary Stats Panel -->
-            <div class="row g-2 mt-4 text-center">
-                <div class="col-md-4">
-                    <div class="p-3 border rounded bg-light-subtle">
-                        <span class="text-muted small d-block mb-1">Trung bình hoàn thành</span>
-                        <strong class="h5 mb-0 text-dark">
-                            @(Model.TotalTasks == 0 ? 0 : Math.Round(Model.CompletedTasks / 14.0, 1)) task/ngày
-                        </strong>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="p-3 border rounded bg-light-subtle">
-                        <span class="text-muted small d-block mb-1">Ngày cao nhất</span>
-                        <strong class="h5 mb-0 text-success">
-                            @(Model.DailyTasks.Values.Any() ? Model.DailyTasks.Values.Max() : 0) task
-                        </strong>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="p-3 border rounded bg-light-subtle">
-                        <span class="text-muted small d-block mb-1">Ngày thấp nhất</span>
-                        <strong class="h5 mb-0 text-muted">
-                            @(Model.DailyTasks.Values.Any() ? Model.DailyTasks.Values.Min() : 0) task
-                        </strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3-Column Sub Charts (Weekly, Monthly, Yearly) -->
-    <div class="row g-4 mb-4">
-        <!-- Weekly -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h6 class="m-0 fw-bold text-dark">Năng suất theo Tuần (8 Tuần)</h6>
-                </div>
-                <div class="card-body p-3">
-                    <div class="chart-container" style="position: relative; height:180px; width:100%">
-                        <canvas id="weeklyTasksChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Monthly -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h6 class="m-0 fw-bold text-dark">Tiến trình theo Tháng (12 Tháng)</h6>
-                </div>
-                <div class="card-body p-3">
-                    <div class="chart-container" style="position: relative; height:180px; width:100%">
-                        <canvas id="monthlyTasksChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Yearly -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h6 class="m-0 fw-bold text-dark">Tích lũy theo Năm (5 Năm)</h6>
-                </div>
-                <div class="card-body p-3">
-                    <div class="chart-container" style="position: relative; height:180px; width:100%">
-                        <canvas id="yearlyTasksChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom Row (Task Status Donut, Activity Feed, Reminders) -->
-    <div class="row g-4">
-        <!-- Donut Status Distribution -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="m-0 fw-bold text-dark">Phân bổ task theo Trạng thái</h5>
-                </div>
-                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
-                    <div style="position: relative; width: 180px; height: 180px;">
-                        <canvas id="taskStatusDonutChart"></canvas>
-                    </div>
-                    <div class="w-100 mt-4 small font-monospace">
-                        <div class="d-flex justify-content-between border-bottom py-2">
-                            <span><strong class="text-success">■</strong> Hoàn thành:</span>
-                            <strong>@Model.CompletedTasks (@completedPercent%)</strong>
-                        </div>
-                        <div class="d-flex justify-content-between border-bottom py-2">
-                            <span><strong class="text-primary">■</strong> Đang làm:</span>
-                            <strong>@Model.InProgressTasks (@progressPercent%)</strong>
-                        </div>
-                        <div class="d-flex justify-content-between border-bottom py-2">
-                            <span><strong class="text-warning">■</strong> Chờ xử lý:</span>
-                            <strong>@Model.PendingTasks (@pendingPercent%)</strong>
-                        </div>
-                        <div class="d-flex justify-content-between py-2 text-danger">
-                            <span><strong>■</strong> Quá hạn:</span>
-                            <strong>@Model.OverdueTasks (@overduePercent%)</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Activity Feed -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
+        <!-- Main Activity Trend Chart -->
+        <div class="@(ViewBag.ComparePrev ? "col-lg-8" : "col-lg-12")">
+            <div class="card border-0 shadow-sm rounded-3 h-100">
                 <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="m-0 fw-bold text-dark">Hoạt Động Cá Nhân</h5>
-                    <span class="badge bg-light text-dark font-monospace">Thời gian thực</span>
+                    <h5 class="m-0 fw-bold text-dark d-flex align-items-center gap-2">
+                        Xu hướng hoạt động theo thời gian
+                        <span class="text-muted" style="cursor:help;" title="Biểu đồ cột biểu diễn số lượng Task mới được tạo, và biểu đồ đường biểu diễn Task hoàn thành & Task quá hạn.">&#9432;</span>
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-secondary border small">
+                            Hiển thị theo: @(ViewBag.ResolvedGroupBy == "day" ? "Ngày" : (ViewBag.ResolvedGroupBy == "week" ? "Tuần" : "Tháng"))
+                        </span>
+                    </div>
                 </div>
-                <div class="card-body p-4 pt-0">
-                    <div class="timeline-activity mt-3">
-                        @if (!Model.RecentActivities.Any())
-                        {
-                            <div class="text-center py-5 text-muted">Chưa ghi nhận hoạt động.</div>
-                        }
-                        else
-                        {
-                            @foreach (var item in Model.RecentActivities.Take(4))
-                            {
-                                <div class="timeline-activity-item d-flex mb-3 position-relative">
-                                    <div class="timeline-indicator-dot bg-@item.Tone shadow-sm"></div>
-                                    <div class="timeline-activity-content ms-3 flex-grow-1">
-                                        <div class="d-flex justify-content-between">
-                                            <strong class="text-dark small">@item.Title</strong>
-                                            <small class="text-muted font-monospace" style="font-size:0.75rem;">@item.OccurredAt.ToString("HH:mm")</small>
-                                        </div>
-                                        <p class="text-muted small mb-0">@item.Detail</p>
-                                    </div>
+                <div class="card-body p-3">
+                    <div class="chart-container" style="position: relative; height:320px; width:100%">
+                        <canvas id="activityTrendComboChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Previous Period Comparison Sparkline List -->
+        @if (ViewBag.ComparePrev)
+        {
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-3 h-100">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold text-dark">So với kỳ trước (@ViewBag.PrevPeriodLabel)</h6>
+                    </div>
+                    <div class="card-body p-3 d-flex flex-column justify-content-between" style="min-height: 320px;">
+                        <div class="d-flex flex-column gap-3">
+                            <!-- Created Tasks -->
+                            <div class="d-flex align-items-center justify-content-between border-bottom pb-2">
+                                <div>
+                                    <span class="text-muted small d-block">Task tạo mới</span>
+                                    <strong class="h5 mb-0 text-dark">@Model.PrevTotalTasks</strong>
                                 </div>
-                            }
-                        }
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small fw-bold @percentClass(Model.TotalTasksDiff)">
+                                        @(Model.TotalTasksDiff >= 0 ? "+" : "")@Model.TotalTasksDiff%
+                                    </span>
+                                    <canvas id="sparklineCreated" width="80" height="24" style="width: 80px; height: 24px;"></canvas>
+                                </div>
+                            </div>
+                            <!-- Completed Tasks -->
+                            <div class="d-flex align-items-center justify-content-between border-bottom pb-2">
+                                <div>
+                                    <span class="text-muted small d-block">Task hoàn thành</span>
+                                    <strong class="h5 mb-0 text-success">@Model.PrevCompletedTasks</strong>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small fw-bold @percentClass(Model.CompletedTasksDiff)">
+                                        @(Model.CompletedTasksDiff >= 0 ? "+" : "")@Model.CompletedTasksDiff%
+                                    </span>
+                                    <canvas id="sparklineCompleted" width="80" height="24" style="width: 80px; height: 24px;"></canvas>
+                                </div>
+                            </div>
+                            <!-- Overdue Tasks -->
+                            <div class="d-flex align-items-center justify-content-between pb-2">
+                                <div>
+                                    <span class="text-muted small d-block">Task quá hạn</span>
+                                    <strong class="h5 mb-0 text-danger">@Model.PrevOverdueTasks</strong>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small fw-bold @(Model.OverdueTasksDiff <= 0 ? "text-success" : "text-danger")">
+                                        @(Model.OverdueTasksDiff >= 0 ? "+" : "")@Model.OverdueTasksDiff%
+                                    </span>
+                                    <canvas id="sparklineOverdue" width="80" height="24" style="width: 80px; height: 24px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-muted small mt-2 pt-2 border-top">
+                            <span>Cập nhật: @ViewBag.LastUpdatedTime</span>
+                            <a href="javascript:void(0)" onclick="document.getElementById('activityFilterForm').submit()" class="text-decoration-none text-secondary" title="Tải lại dữ liệu">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Row 2: Secondary Charts (Teal Productivity Group, Cumulative Completion, Donut status breakdown) -->
+    <div class="row g-4 mb-4">
+        <!-- 1. Productivity by time group -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="m-0 fw-bold text-dark d-flex align-items-center gap-2">
+                        Năng suất theo nhóm thời gian
+                        <span class="text-muted" style="cursor:help;" title="Tổng số task đã hoàn thành tính theo mỗi khoảng thời gian chia nhỏ.">&#9432;</span>
+                    </h6>
+                </div>
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="chart-container" style="position: relative; height:180px; width:100%">
+                        <canvas id="groupChart"></canvas>
+                    </div>
+                    <div class="text-center mt-3 text-secondary small fw-semibold">
+                        @Model.GroupChartAverageText
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Upcoming Reminders -->
+        <!-- 2. Cumulative Completion Trend -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="m-0 fw-bold text-dark">Nhắc Nhở Kế Hoạch</h5>
-                    <a asp-controller="Schedule" asp-action="Calendar" class="small text-decoration-none">Xem lịch</a>
+            <div class="card border-0 shadow-sm rounded-3 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="m-0 fw-bold text-dark d-flex align-items-center gap-2">
+                        Xu hướng hoàn thành tích lũy
+                        <span class="text-muted" style="cursor:help;" title="Số lượng task hoàn thành lũy kế tăng dần trong chu kỳ lọc.">&#9432;</span>
+                    </h6>
                 </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        @if (!Model.Reminders.Any())
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="chart-container" style="position: relative; height:180px; width:100%">
+                        <canvas id="cumulativeChart"></canvas>
+                    </div>
+                    <div class="text-center mt-3 text-secondary small fw-semibold">
+                        Tổng task hoàn thành tích lũy: @Model.CompletedTasks
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Status Distribution -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="m-0 fw-bold text-dark d-flex align-items-center gap-2">
+                        Phân bổ task theo trạng thái
+                        <span class="text-muted" style="cursor:help;" title="Tỷ lệ trạng thái hiện tại của các task được tạo trong chu kỳ lọc.">&#9432;</span>
+                    </h6>
+                </div>
+                <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center">
+                    <div style="position: relative; width: 140px; height: 140px;">
+                        <canvas id="statusDonutChart"></canvas>
+                    </div>
+                    <div class="w-100 mt-3 small font-monospace">
+                        <div class="d-flex justify-content-between border-bottom py-1">
+                            <span><strong class="text-success">■</strong> Hoàn thành:</span>
+                            <strong>@Model.DonutCompleted (@(Model.TotalTasks > 0 ? Math.Round(Model.DonutCompleted * 100.0 / Model.TotalTasks, 1) : 0)%)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom py-1">
+                            <span><strong class="text-primary">■</strong> Đang làm:</span>
+                            <strong>@Model.DonutInProgress (@(Model.TotalTasks > 0 ? Math.Round(Model.DonutInProgress * 100.0 / Model.TotalTasks, 1) : 0)%)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom py-1">
+                            <span><strong class="text-warning">■</strong> Chờ xử lý:</span>
+                            <strong>@Model.DonutPending (@(Model.TotalTasks > 0 ? Math.Round(Model.DonutPending * 100.0 / Model.TotalTasks, 1) : 0)%)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 text-danger border-bottom">
+                            <span><strong>■</strong> Quá hạn:</span>
+                            <strong>@Model.DonutOverdue (@(Model.TotalTasks > 0 ? Math.Round(Model.DonutOverdue * 100.0 / Model.TotalTasks, 1) : 0)%)</strong>
+                        </div>
+                    </div>
+                    <div class="text-center mt-2 text-secondary small fw-semibold">
+                        Tổng cộng: @Model.TotalTasks task
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3: Detail Periodic Table -->
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="m-0 fw-bold text-dark d-flex align-items-center gap-2">
+                Chi tiết theo thời gian
+                <span class="text-muted" style="cursor:help;" title="Bảng thống kê số liệu chi tiết cho từng khoảng chia nhỏ trong chu kỳ.">&#9432;</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary small text-uppercase">
+                        <tr>
+                            <th class="ps-4">Nhóm thời gian</th>
+                            <th>Task tạo mới</th>
+                            <th>Task hoàn thành</th>
+                            <th>Task quá hạn</th>
+                            <th style="min-width: 150px;">Tỷ lệ hoàn thành</th>
+                            <th class="pe-4">So với kỳ trước</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.TableDetails.Any())
                         {
-                            <div class="text-center py-5 text-muted px-3">
-                                <p class="fs-4 mb-2">🔔</p>
-                                <h6>Không có nhắc nhở nào sắp tới</h6>
-                                <p class="small">Lịch trong tuần tới sẽ hiển thị tại đây.</p>
-                            </div>
+                            foreach (var item in Model.TableDetails)
+                            {
+                                <tr>
+                                    <td class="ps-4 fw-semibold text-dark">@item.Label</td>
+                                    <td>@item.CreatedCount</td>
+                                    <td class="text-success fw-semibold">@item.CompletedCount</td>
+                                    <td class="text-danger">@item.OverdueCount</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="small font-monospace" style="min-width: 45px;">@item.CompletionRate%</span>
+                                            <div class="progress flex-grow-1" style="height: 6px; border-radius: 3px; background-color: rgba(0,0,0,0.06);">
+                                                <div class="progress-bar bg-success" style="width: @(item.CompletionRate)%;"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="pe-4">
+                                        @if (item.RateChangeComparedToPrev > 0)
+                                        {
+                                            <span class="text-success small fw-semibold d-inline-flex align-items-center gap-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                                                @item.RateChangeComparedToPrev%
+                                            </span>
+                                        }
+                                        else if (item.RateChangeComparedToPrev < 0)
+                                        {
+                                            <span class="text-danger small fw-semibold d-inline-flex align-items-center gap-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                                                @Math.Abs(item.RateChangeComparedToPrev)%
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">0%</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
                         }
                         else
                         {
-                            @foreach (var reminder in Model.Reminders.Take(4))
-                            {
-                                <a class="list-group-item list-group-item-action p-3 border-0 border-bottom d-flex align-items-center justify-content-between" 
-                                   asp-controller="Schedule" asp-action="Index" asp-route-startDate="@reminder.StartsAt.ToString("yyyy-MM-dd")">
-                                    <div>
-                                        <strong class="text-dark d-block">@reminder.Title</strong>
-                                        <small class="text-muted">@reminder.Detail</small>
-                                    </div>
-                                    <span class="badge bg-warning-subtle text-warning font-monospace py-2">
-                                        @reminder.StartsAt.ToString("HH:mm")
-                                    </span>
-                                </a>
-                            }
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">Không có dữ liệu trong khoảng thời gian này.</td>
+                            </tr>
                         }
-                    </div>
-                </div>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -294,74 +423,136 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Load chart data payload
-            const activityCharts = @Html.Raw(chartPayload);
+        function toggleRangePreset() {
+            const preset = document.getElementById('rangePreset').value;
+            const customDiv = document.getElementById('customRangeInputs');
+            if (preset === 'custom') {
+                customDiv.classList.remove('d-none');
+            } else {
+                customDiv.classList.add('d-none');
+                document.getElementById('activityFilterForm').submit();
+            }
+        }
 
-            const baseOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { 
-                        padding: 12,
-                        cornerRadius: 8
-                    }
-                },
-                scales: {
-                    x: { 
-                        grid: { display: false },
-                        ticks: { color: '#858796' }
-                    },
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { 
-                            precision: 0,
-                            color: '#858796'
+        document.addEventListener('DOMContentLoaded', function () {
+            // 1. Combo activity trend chart
+            const comboCtx = document.getElementById('activityTrendComboChart').getContext('2d');
+            new Chart(comboCtx, {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(JsonSerializer.Serialize(Model.MainChartLabels)),
+                    datasets: [
+                        {
+                            label: 'Task tạo mới',
+                            type: 'bar',
+                            data: @Html.Raw(JsonSerializer.Serialize(Model.MainChartCreated)),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4,
+                            order: 2
                         },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
+                        {
+                            label: 'Task hoàn thành',
+                            type: 'line',
+                            data: @Html.Raw(JsonSerializer.Serialize(Model.MainChartCompleted)),
+                            borderColor: '#10b981',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.35,
+                            pointBackgroundColor: '#10b981',
+                            order: 1
+                        },
+                        {
+                            label: 'Task quá hạn',
+                            type: 'line',
+                            data: @Html.Raw(JsonSerializer.Serialize(Model.MainChartOverdue)),
+                            borderColor: '#ef4444',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.35,
+                            pointBackgroundColor: '#ef4444',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { 
+                            beginAtZero: true, 
+                            precision: 0,
+                            grid: { color: 'rgba(0,0,0,0.05)' } 
                         }
                     }
                 }
-            };
-
-            activityCharts.forEach((item) => {
-                const canvas = document.getElementById(item.id);
-                if (!canvas || !window.Chart) return;
-                const color = item.chart.Color;
-                const isLine = item.type === 'line';
-                new Chart(canvas, {
-                    type: item.type,
-                    data: {
-                        labels: item.chart.Labels,
-                        datasets: [{
-                            label: item.chart.Title,
-                            data: item.chart.Values,
-                            borderColor: color,
-                            backgroundColor: isLine ? 'rgba(79, 70, 229, 0.08)' : color,
-                            borderWidth: isLine ? 3 : 0,
-                            fill: isLine,
-                            tension: 0.35,
-                            borderRadius: isLine ? 0 : 4,
-                            pointBackgroundColor: color,
-                            pointHoverRadius: 6
-                        }]
-                    },
-                    options: baseOptions
-                });
             });
 
-            // Donut chart status
-            const statusCtx = document.getElementById('taskStatusDonutChart').getContext('2d');
-            new Chart(statusCtx, {
+            // 2. Teal group completed bar chart
+            const groupCtx = document.getElementById('groupChart').getContext('2d');
+            new Chart(groupCtx, {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(JsonSerializer.Serialize(Model.GroupChartLabels)),
+                    datasets: [{
+                        label: 'Hoàn thành',
+                        data: @Html.Raw(JsonSerializer.Serialize(Model.GroupChartCompleted)),
+                        backgroundColor: '#0f766e',
+                        borderRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, precision: 0, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    }
+                }
+            });
+
+            // 3. Cumulative completed chart (violet area line)
+            const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
+            new Chart(cumulativeCtx, {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(JsonSerializer.Serialize(Model.CumulativeChartLabels)),
+                    datasets: [{
+                        label: 'Task hoàn thành tích lũy',
+                        data: @Html.Raw(JsonSerializer.Serialize(Model.CumulativeChartValues)),
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.25,
+                        pointBackgroundColor: '#7c3aed'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, precision: 0, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    }
+                }
+            });
+
+            // 4. Status distribution donut
+            const donutCtx = document.getElementById('statusDonutChart').getContext('2d');
+            new Chart(donutCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Hoàn thành', 'Đang làm', 'Chờ xử lý', 'Quá hạn'],
                     datasets: [{
-                        data: [@Model.CompletedTasks, @Model.InProgressTasks, @Model.PendingTasks, @Model.OverdueTasks],
-                        backgroundColor: ['#198754', '#0d6efd', '#ffc107', '#dc3545'],
+                        data: [@Model.DonutCompleted, @Model.DonutInProgress, @Model.DonutPending, @Model.DonutOverdue],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
                         borderWidth: 2,
                         borderColor: '#ffffff',
                         hoverOffset: 4
@@ -371,20 +562,61 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
-                        },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     return ' ' + context.label + ': ' + context.raw + ' task';
                                 }
                             }
                         }
                     },
-                    cutout: '75%'
+                    cutout: '72%'
                 }
             });
+
+            // 5. Sparklines comparison setup
+            @if (ViewBag.ComparePrev)
+            {
+                <text>
+                const sparklineOptions = {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: { x: { display: false }, y: { display: false } },
+                    elements: { point: { radius: 0 }, line: { borderWidth: 1.5 } }
+                };
+
+                const createdTrend = @Html.Raw(JsonSerializer.Serialize(Model.PrevCreatedTrend));
+                const completedTrend = @Html.Raw(JsonSerializer.Serialize(Model.PrevCompletedTrend));
+                const overdueTrend = @Html.Raw(JsonSerializer.Serialize(Model.PrevOverdueTrend));
+
+                new Chart(document.getElementById('sparklineCreated'), {
+                    type: 'line',
+                    data: {
+                        labels: createdTrend.map((_, i) => i.toString()),
+                        datasets: [{ data: createdTrend, borderColor: '#3b82f6', fill: false }]
+                    },
+                    options: sparklineOptions
+                });
+                new Chart(document.getElementById('sparklineCompleted'), {
+                    type: 'line',
+                    data: {
+                        labels: completedTrend.map((_, i) => i.toString()),
+                        datasets: [{ data: completedTrend, borderColor: '#10b981', fill: false }]
+                    },
+                    options: sparklineOptions
+                });
+                new Chart(document.getElementById('sparklineOverdue'), {
+                    type: 'line',
+                    data: {
+                        labels: overdueTrend.map((_, i) => i.toString()),
+                        datasets: [{ data: overdueTrend, borderColor: '#ef4444', fill: false }]
+                    },
+                    options: sparklineOptions
+                });
+                </text>
+            }
         });
     </script>
 }

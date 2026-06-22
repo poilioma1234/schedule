@@ -9,6 +9,7 @@ using schedule.ViewModels;
 namespace schedule.Controllers
 {
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class SearchController : Controller
     {
         private readonly ApplicationDbContext _context;

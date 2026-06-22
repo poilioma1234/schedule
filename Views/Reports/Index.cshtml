@@ -1,131 +1,1106 @@
 @{
-    ViewData["Title"] = "Báo cáo";
+    ViewData["Title"] = "Báo cáo cá nhân";
     var completedRate = (int)(ViewBag.TotalTasks == 0 ? 0 : Math.Round(ViewBag.CompletedTasks * 100.0 / ViewBag.TotalTasks));
     var isAdmin = User.IsInRole("Admin");
     var users = ViewBag.Users as List<(string Id, string Email, string DisplayName)> ?? new();
 }
 
-<section class="app-page">
-    <div class="app-page-heading">
-        <div>
-            <h1>Báo cáo</h1>
-            <p>Xem nhanh tình hình lịch/task trước khi xuất dữ liệu.</p>
-        </div>
-        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#exportPdfModal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Xuất PDF lịch trình
-        </button>
-    </div>
+<style>
+    /* Custom report dashboard design matching reference image */
+    .report-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .report-filter-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        margin-bottom: 1.5rem;
+    }
+    
+    .app-dark .report-filter-card {
+        background-color: #111827;
+        border-color: #263244;
+    }
 
-    <div class="metric-grid four">
-        <article class="metric-card blue"><span>Tổng lịch</span><strong>@ViewBag.TotalSchedules</strong><small>Lịch đã tạo</small></article>
-        <article class="metric-card green"><span>Task hoàn thành</span><strong>@ViewBag.CompletedTasks</strong><small>@completedRate% tổng task</small></article>
-        <article class="metric-card red"><span>Task quá hạn</span><strong>@ViewBag.OverdueTasks</strong><small>Cần xử lý</small></article>
-        <article class="metric-card purple"><span>Tổng task</span><strong>@ViewBag.TotalTasks</strong><small>Toàn bộ nhiệm vụ</small></article>
-    </div>
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr 1fr 1.5fr;
+        gap: 1rem;
+        align-items: end;
+    }
 
-    <section class="report-action-grid">
-        <article>
-            <span>PDF</span>
-            <h2>Báo cáo lịch trình</h2>
-            <p>Xuất danh sách lịch trình và hoạt động theo user và khoảng thời gian ra PDF.</p>
-            <a href="#" data-bs-toggle="modal" data-bs-target="#exportPdfModal">Xuất PDF</a>
-        </article>
-        <article>
-            <span>Chart</span>
-            <h2>Phân tích hoạt động</h2>
-            <p>Xem biểu đồ task theo ngày, tuần, tháng, năm và phân bổ trạng thái.</p>
-            <a asp-controller="Activity" asp-action="Index">Mở hoạt động</a>
-        </article>
-        <article>
-            <span>Rank</span>
-            <h2>Hiệu suất người dùng</h2>
-            <p>Xem bảng xếp hạng theo ngày, tuần, tháng, năm và huy hiệu top tháng.</p>
-            <a asp-controller="Leaderboard" asp-action="Index">Mở bảng xếp hạng</a>
-        </article>
-    </section>
-</section>
+    @@media (max-width: 1024px) {
+        .filter-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @@media (max-width: 768px) {
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 
-<!-- Export PDF Modal -->
-<div class="modal fade" id="exportPdfModal" tabindex="-1" aria-labelledby="exportPdfModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-bottom">
-                <h5 class="modal-title fw-bold" id="exportPdfModalLabel">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2 text-danger"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    Xuất PDF Báo cáo
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+    .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #334155;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .app-dark .filter-label {
+        color: #94a3b8;
+    }
+
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 0.375rem 0;
+    }
+
+    /* Date alert range styling */
+    .range-alert {
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+    .app-dark .range-alert {
+        background-color: rgba(30, 64, 175, 0.15);
+        border-color: rgba(30, 64, 175, 0.3);
+        color: #60a5fa;
+    }
+
+    /* KPI Cards section */
+    .report-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    @@media (max-width: 992px) {
+        .report-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @@media (max-width: 576px) {
+        .report-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .report-kpi-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .report-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .app-dark .report-kpi-card {
+        background-color: #111827;
+        border-color: #263244;
+    }
+
+    .kpi-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .kpi-icon-wrapper.blue { background-color: #eff6ff; color: #3b82f6; }
+    .kpi-icon-wrapper.purple { background-color: #faf5ff; color: #a855f7; }
+    .kpi-icon-wrapper.green { background-color: #f0fdf4; color: #10b981; }
+    .kpi-icon-wrapper.red { background-color: #fef2f2; color: #ef4444; }
+    .kpi-icon-wrapper.orange { background-color: #fff7ed; color: #f97316; }
+
+    .kpi-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .kpi-info span {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .kpi-info strong {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+        margin: 0.15rem 0;
+    }
+    .kpi-info small {
+        font-size: 0.72rem;
+        color: #94a3b8;
+    }
+    .app-dark .kpi-info strong { color: #f8fafc; }
+
+    /* Sub-Report Cards Section */
+    .sub-report-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+        margin-bottom: 2.5rem;
+    }
+    @@media (max-width: 1024px) {
+        .sub-report-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @@media (max-width: 576px) {
+        .sub-report-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .sub-report-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .sub-report-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .app-dark .sub-report-card {
+        background-color: #111827;
+        border-color: #263244;
+    }
+
+    .sub-report-header {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+    .sub-report-icon-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .sub-report-icon-box.blue { background-color: #eff6ff; color: #3b82f6; }
+    .sub-report-icon-box.green { background-color: #f0fdf4; color: #10b981; }
+    .sub-report-icon-box.purple { background-color: #faf5ff; color: #a855f7; }
+    .sub-report-icon-box.orange { background-color: #fff7ed; color: #f97316; }
+
+    .sub-report-title h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+    }
+    .app-dark .sub-report-title h3 { color: #f8fafc; }
+
+    .sub-report-card p {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-bottom: 1.25rem;
+        line-height: 1.4;
+    }
+    .app-dark .sub-report-card p { color: #94a3b8; }
+
+    .sub-report-btn {
+        width: 100%;
+        text-align: center;
+        padding: 0.625rem;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background-color: #ffffff;
+        color: #334155;
+        font-size: 0.825rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: inline-block;
+    }
+    .sub-report-btn:hover {
+        background-color: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+    .app-dark .sub-report-btn {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #d1d5db;
+    }
+    .app-dark .sub-report-btn:hover {
+        background-color: #374151;
+        color: #ffffff;
+    }
+
+    .sub-report-link {
+        width: 100%;
+        text-align: center;
+        padding: 0.625rem;
+        color: #3b82f6;
+        font-size: 0.825rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background: transparent;
+        border: none;
+    }
+    .sub-report-link:hover {
+        color: #2563eb;
+        text-decoration: underline;
+    }
+    .app-dark .sub-report-link {
+        color: #60a5fa;
+    }
+    .app-dark .sub-report-link:hover {
+        color: #3b82f6;
+    }
+
+    /* PDF Preview Section Layout */
+    .preview-section {
+        display: grid;
+        grid-template-columns: 320px 1fr 1fr;
+        gap: 2rem;
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+    .app-dark .preview-section {
+        background-color: #111827;
+        border-color: #263244;
+    }
+    @@media (max-width: 1024px) {
+        .preview-section {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Checklist */
+    .preview-checklist {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    .checklist-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        transition: opacity 0.2s ease;
+    }
+    .checklist-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #eff6ff;
+        color: #3b82f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .checklist-icon.green { background-color: #f0fdf4; color: #10b981; }
+    .checklist-icon.purple { background-color: #faf5ff; color: #a855f7; }
+    .checklist-icon.orange { background-color: #fff7ed; color: #f97316; }
+
+    .checklist-text h4 {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 0.15rem 0;
+    }
+    .checklist-text p {
+        font-size: 0.775rem;
+        color: #64748b;
+        margin: 0;
+    }
+    .app-dark .checklist-text h4 { color: #f8fafc; }
+    .app-dark .checklist-text p { color: #94a3b8; }
+
+    /* Tips card box */
+    .tips-card {
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 1.25rem;
+        height: fit-content;
+    }
+    .app-dark .tips-card {
+        background-color: rgba(30, 64, 175, 0.1);
+        border-color: rgba(30, 64, 175, 0.2);
+    }
+    .tips-card h4 {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #1e40af;
+        margin: 0 0 0.75rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .app-dark .tips-card h4 { color: #60a5fa; }
+    .tips-card ul {
+        margin: 0;
+        padding-left: 1.2rem;
+        font-size: 0.8rem;
+        color: #1e3a8a;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .app-dark .tips-card ul { color: #93c5fd; }
+</style>
+
+<div class="container-fluid px-4 py-4">
+    <form id="exportPdfForm" method="get" action="/Reports/ExportPdf" target="_blank">
+        <input type="hidden" id="pdfMode" name="mode" value="download" />
+        <input type="hidden" id="includeSchedules" name="includeSchedules" value="true" />
+        <input type="hidden" id="includeTasks" name="includeTasks" value="true" />
+        <input type="hidden" id="includeActivity" name="includeActivity" value="true" />
+
+        <!-- Page Header -->
+        <div class="report-header">
+            <div>
+                <h1 class="h3 mb-0 text-gray-800 fw-bold">Báo cáo cá nhân</h1>
+                <p class="text-muted mb-0">Tổng hợp lịch trình, task và hiệu suất làm việc của bạn trước khi xuất PDF.</p>
             </div>
-            <form id="exportPdfForm" method="get" action="/Reports/ExportPdf" target="_blank">
-                <div class="modal-body p-4">
+            <div class="d-flex gap-2">
+                <button type="button" id="btnPreviewPdf" class="btn btn-outline-primary shadow-sm d-flex align-items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Xem trước PDF
+                </button>
+                <button type="button" id="btnExportPdf" class="btn btn-primary shadow-sm d-flex align-items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Xuất PDF
+                </button>
+            </div>
+        </div>
 
+        <!-- Filter Card -->
+        <div class="report-filter-card">
+            <div class="filter-grid">
+                <!-- Report Type -->
+                <div class="filter-item">
+                    <label class="filter-label" for="pdfReportType">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        Loại báo cáo
+                    </label>
                     @if (isAdmin)
                     {
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold" for="pdfUserId">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                                Xuất lịch của ai?
-                            </label>
-                            <select class="form-select" id="pdfUserId" name="userId">
-                                <option value="">Tất cả người dùng</option>
-                                @foreach (var u in users)
-                                {
-                                    <option value="@u.Id">@(string.IsNullOrWhiteSpace(u.DisplayName) ? u.Email : $"{u.DisplayName} ({u.Email})")</option>
-                                }
-                            </select>
-                            <div class="form-text text-muted">Chọn "Tất cả người dùng" để xuất toàn bộ hệ thống.</div>
-                        </div>
+                        <select class="form-select" id="pdfReportType" name="reportType">
+                            <option value="personal" selected>Tổng hợp cá nhân</option>
+                            <option value="schedules">Lịch trình kèm task</option>
+                            <option value="tasks">Task chi tiết</option>
+                            <option value="performance">Hiệu suất cá nhân</option>
+                            <option value="system">Tổng quan hệ thống</option>
+                            <option value="users">Danh sách người dùng</option>
+                        </select>
                     }
+                    else
+                    {
+                        <select class="form-select" id="pdfReportType" name="reportType">
+                            <option value="personal" selected>Tổng hợp cá nhân</option>
+                            <option value="schedules">Lịch trình kèm task</option>
+                            <option value="tasks">Task chi tiết</option>
+                            <option value="performance">Hiệu suất cá nhân</option>
+                        </select>
+                    }
+                </div>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            Khoảng thời gian
-                        </label>
-                        <div class="d-flex gap-2 align-items-center">
-                            <div class="flex-fill">
-                                <label class="form-label small text-muted mb-1">Từ ngày</label>
-                                <input type="date" class="form-control" id="pdfFromDate" name="fromDate" />
-                            </div>
-                            <div class="pt-4 text-muted">—</div>
-                            <div class="flex-fill">
-                                <label class="form-label small text-muted mb-1">Đến ngày</label>
-                                <input type="date" class="form-control" id="pdfToDate" name="toDate" />
-                            </div>
+                <!-- Date Preset -->
+                <div class="filter-item">
+                    <label class="filter-label" for="pdfDateRangePreset">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Khoảng thời gian
+                    </label>
+                    <select class="form-select" id="pdfDateRangePreset">
+                        <option value="7days">7 ngày gần nhất</option>
+                        <option value="14days">14 ngày gần nhất</option>
+                        <option value="30days" selected>30 ngày gần nhất</option>
+                        <option value="thisMonth">Tháng này</option>
+                        <option value="lastMonth">Tháng trước</option>
+                        <option value="custom">Tùy chỉnh</option>
+                    </select>
+                </div>
+
+                <!-- From Date -->
+                <div class="filter-item">
+                    <label class="filter-label" for="pdfFromDate">Từ ngày</label>
+                    <input type="date" class="form-control" id="pdfFromDate" name="fromDate" />
+                </div>
+
+                <!-- To Date -->
+                <div class="filter-item">
+                    <label class="filter-label" for="pdfToDate">Đến ngày</label>
+                    <input type="date" class="form-control" id="pdfToDate" name="toDate" />
+                </div>
+
+                <!-- PDF Content Checkboxes -->
+                <div class="filter-item" id="pdfContentCheckboxesContainer">
+                    <label class="filter-label">Nội dung PDF</label>
+                    <div class="checkbox-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkOverview" checked />
+                            <label class="form-check-label" for="chkOverview">Tổng quan</label>
                         </div>
-                        <div class="form-text text-muted">Để trống để xuất tất cả các ngày.</div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label fw-semibold">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                            Nội dung xuất
-                        </label>
-                        <div class="d-flex flex-column gap-2">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="includeSchedules" name="includeSchedules" value="true" checked />
-                                <label class="form-check-label" for="includeSchedules">Lịch trình</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="includeTasks" name="includeTasks" value="true" checked />
-                                <label class="form-check-label" for="includeTasks">Danh sách Task</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="includeActivity" name="includeActivity" value="true" checked />
-                                <label class="form-check-label" for="includeActivity">Hoạt động (tóm tắt)</label>
-                            </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkCharts" checked />
+                            <label class="form-check-label" for="chkCharts">Biểu đồ</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkDetails" checked />
+                            <label class="form-check-label" for="chkDetails">Danh sách chi tiết</label>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-danger fw-semibold">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Tải xuống PDF
-                    </button>
+            </div>
+
+            <!-- Conditional Admin dropdown for targets -->
+            @if (isAdmin)
+            {
+                <div class="mt-3" id="userIdContainer" style="max-width: 320px;">
+                    <label class="filter-label mb-2" for="pdfUserId">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Xuất lịch của ai?
+                    </label>
+                    <select class="form-select" id="pdfUserId" name="userId">
+                        @foreach (var u in users)
+                        {
+                            <option value="@u.Id">@(string.IsNullOrWhiteSpace(u.DisplayName) ? u.Email : $"{u.DisplayName} ({u.Email})")</option>
+                        }
+                    </select>
                 </div>
-            </form>
+            }
+
+            <!-- Alert info block -->
+            <div class="range-alert" id="rangeAlertBlock">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span id="dateAlertRange">Đang tính toán dữ liệu khoảng thời gian...</span>
+            </div>
+        </div>
+    </form>
+
+    <!-- KPI Grid -->
+    <div class="report-kpi-grid">
+        <!-- KPI 1 -->
+        <article class="report-kpi-card">
+            <div class="kpi-icon-wrapper blue">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="kpi-info">
+                <span>Tổng lịch</span>
+                <strong>@ViewBag.TotalSchedules</strong>
+                <small>Lịch đã tạo</small>
+            </div>
+        </article>
+
+        <!-- KPI 2 -->
+        <article class="report-kpi-card">
+            <div class="kpi-icon-wrapper purple">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </div>
+            <div class="kpi-info">
+                <span>Tổng task</span>
+                <strong>@ViewBag.TotalTasks</strong>
+                <small>Toàn bộ nhiệm vụ</small>
+            </div>
+        </article>
+
+        <!-- KPI 3 -->
+        <article class="report-kpi-card">
+            <div class="kpi-icon-wrapper green">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="kpi-info">
+                <span>Task hoàn thành</span>
+                <strong>@ViewBag.CompletedTasks</strong>
+                <small>@completedRate% tổng task</small>
+            </div>
+        </article>
+
+        <!-- KPI 4 -->
+        <article class="report-kpi-card">
+            <div class="kpi-icon-wrapper red">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="kpi-info">
+                <span>Task quá hạn</span>
+                <strong>@ViewBag.OverdueTasks</strong>
+                <small class="text-danger fw-semibold">Cần xử lý</small>
+            </div>
+        </article>
+
+        <!-- KPI 5 -->
+        <article class="report-kpi-card">
+            <div class="kpi-icon-wrapper orange">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+            </div>
+            <div class="kpi-info">
+                <span>Tỷ lệ hoàn thành</span>
+                <strong>@completedRate%</strong>
+                <small>Theo khoảng báo cáo</small>
+            </div>
+        </article>
+    </div>
+
+    <!-- Sub-report grid -->
+    <div class="sub-report-grid">
+        <!-- Sub-card 1 -->
+        <article class="sub-report-card">
+            <div>
+                <div class="sub-report-header">
+                    <div class="sub-report-icon-box blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </div>
+                    <div class="sub-report-title">
+                        <h3>Báo cáo tổng hợp cá nhân</h3>
+                    </div>
+                </div>
+                <p>Tổng hợp lịch trình, task, tiến độ và hiệu suất của bạn trong khoảng thời gian đã chọn.</p>
+            </div>
+            <button type="button" class="sub-report-link btnPreviewTrigger">
+                &gt; Xem trước
+            </button>
+        </article>
+
+        <!-- Sub-card 2 -->
+        <article class="sub-report-card">
+            <div>
+                <div class="sub-report-header">
+                    <div class="sub-report-icon-box green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                    <div class="sub-report-title">
+                        <h3>Lịch trình kèm task</h3>
+                    </div>
+                </div>
+                <p>Xuất danh sách lịch trình theo ngày, tuần hoặc khoảng thời gian tùy chỉnh.</p>
+            </div>
+            <a asp-controller="Schedule" asp-action="Index" class="sub-report-btn">Cấu hình báo cáo</a>
+        </article>
+
+        <!-- Sub-card 3 -->
+        <article class="sub-report-card">
+            <div>
+                <div class="sub-report-header">
+                    <div class="sub-report-icon-box purple">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </div>
+                    <div class="sub-report-title">
+                        <h3>Task chi tiết</h3>
+                    </div>
+                </div>
+                <p>Thống kê task đã tạo, đang làm, hoàn thành và quá hạn theo trạng thái.</p>
+            </div>
+            <a asp-controller="Tasks" asp-action="Index" class="sub-report-btn">Cấu hình báo cáo</a>
+        </article>
+
+        <!-- Sub-card 4 -->
+        <article class="sub-report-card">
+            <div>
+                <div class="sub-report-header">
+                    <div class="sub-report-icon-box orange">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+                    </div>
+                    <div class="sub-report-title">
+                        <h3>Hiệu suất cá nhân</h3>
+                    </div>
+                </div>
+                <p>Theo dõi tỷ lệ hoàn thành, task quá hạn, streak và xu hướng làm việc của bạn.</p>
+            </div>
+            <a asp-controller="Activity" asp-action="Index" class="sub-report-link">Xem phân tích</a>
+        </article>
+    </div>
+
+    <!-- PDF Preview Section -->
+    <div>
+        <h3 class="fw-bold mb-1" style="font-size: 1.15rem; color: #0f172a;">Xem trước nội dung PDF</h3>
+        <p class="text-muted mb-4" style="font-size: 0.85rem;">Báo cáo PDF của bạn sẽ bao gồm các nội dung sau:</p>
+
+        <div class="preview-section">
+            <!-- Left Side Mockup -->
+            <div class="d-flex justify-content-center align-items-center bg-light rounded-4 p-4" style="border: 1px dashed #cbd5e1; height: 100%;">
+                <div class="pdf-preview-mockup border rounded-3 p-3 bg-white shadow-sm" style="width: 100%; max-width: 250px; font-size: 0.55rem; color: #475569; font-family: sans-serif;">
+                    <!-- Header -->
+                    <div class="text-center mb-3">
+                        <div class="fw-bold text-uppercase text-primary" style="font-size: 0.7rem; letter-spacing: 0.5px; line-height: 1.2;">BÁO CÁO CÁ NHÂN</div>
+                        <div class="text-muted fw-semibold" style="font-size: 0.5rem; margin-top: 2px;">@(User.Identity?.Name ?? "Người dùng")</div>
+                        <div id="mockDateRange" class="text-muted" style="font-size: 0.45rem; opacity: 0.8; margin-top: 1px;">Thời gian: 28/05/2026 - 27/06/2026</div>
+                    </div>
+                    
+                    <!-- Metrics row inside PDF -->
+                    <div class="d-flex gap-1 mb-3" id="mockMetricsRow">
+                        <div class="flex-fill p-1 text-center rounded" style="background-color: #eff6ff; border: 0.5px solid #bfdbfe; min-width: 0;">
+                            <div class="text-muted" style="font-size: 0.4rem; line-height: 1.1;">Lịch trình</div>
+                            <div class="fw-bold text-primary" style="font-size: 0.55rem; margin-top: 1px;">@ViewBag.TotalSchedules</div>
+                        </div>
+                        <div class="flex-fill p-1 text-center rounded" style="background-color: #faf5ff; border: 0.5px solid #e9d5ff; min-width: 0;">
+                            <div class="text-muted" style="font-size: 0.4rem; line-height: 1.1;">Nhiệm vụ</div>
+                            <div class="fw-bold" style="font-size: 0.55rem; color: #7e22ce; margin-top: 1px;">@ViewBag.TotalTasks</div>
+                        </div>
+                        <div class="flex-fill p-1 text-center rounded" style="background-color: #f0fdf4; border: 0.5px solid #bbf7d0; min-width: 0;">
+                            <div class="text-muted" style="font-size: 0.4rem; line-height: 1.1;">Hoàn thành</div>
+                            <div class="fw-bold text-success" style="font-size: 0.55rem; color: #15803d; margin-top: 1px;">@ViewBag.CompletedTasks</div>
+                        </div>
+                        <div class="flex-fill p-1 text-center rounded" style="background-color: #fef2f2; border: 0.5px solid #fecaca; min-width: 0;">
+                            <div class="text-muted" style="font-size: 0.4rem; line-height: 1.1;">Quá hạn</div>
+                            <div class="fw-bold text-danger" style="font-size: 0.55rem; color: #b91c1c; margin-top: 1px;">@ViewBag.OverdueTasks</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts section inside PDF -->
+                    <div class="row g-1 mb-3" id="mockChartsRow">
+                        <div class="col-7">
+                            <div class="border rounded p-1 bg-light d-flex align-items-center justify-content-center" style="height: 48px;">
+                                <svg viewBox="0 0 100 40" width="100%" height="100%">
+                                    <path d="M0,35 Q15,12 40,25 T75,5 T100,20" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+                                    <line x1="0" y1="38" x2="100" y2="38" stroke="#cbd5e1" stroke-width="0.5"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="col-5">
+                            <div class="border rounded p-1 bg-light d-flex align-items-center justify-content-center" style="height: 48px;">
+                                <svg viewBox="0 0 30 30" width="100%" height="100%">
+                                    <circle cx="15" cy="15" r="9" fill="#e2e8f0"/>
+                                    <path d="M15,15 L15,6 A9,9 0 0,1 24,15 Z" fill="#2563eb"/>
+                                    <path d="M15,15 L24,15 A9,9 0 0,1 15,24 Z" fill="#10b981"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Table section inside PDF -->
+                    <div class="border rounded overflow-hidden" id="mockDetailsRow">
+                        <div class="bg-light p-1 fw-bold border-bottom" style="font-size: 0.45rem; display: grid; grid-template-columns: 2fr 1fr 1fr;">
+                            <span>Nhiệm vụ</span>
+                            <span>Hạn chót</span>
+                            <span>Trạng thái</span>
+                        </div>
+                        <div class="p-1 border-bottom" style="display: grid; grid-template-columns: 2fr 1fr 1fr; font-size: 0.4rem; opacity: 0.85; line-height: 1.1;">
+                            <span class="text-truncate">Ôn thi ngày 1</span>
+                            <span>22/06</span>
+                            <span class="text-success fw-semibold">Xong</span>
+                        </div>
+                        <div class="p-1 border-bottom" style="display: grid; grid-template-columns: 2fr 1fr 1fr; font-size: 0.4rem; opacity: 0.85; line-height: 1.1;">
+                            <span class="text-truncate">Lập trình API</span>
+                            <span>25/06</span>
+                            <span class="text-warning fw-semibold">Đang làm</span>
+                        </div>
+                        <div class="p-1" style="display: grid; grid-template-columns: 2fr 1fr 1fr; font-size: 0.4rem; opacity: 0.85; line-height: 1.1;">
+                            <span class="text-truncate">Deadline bài tập</span>
+                            <span>26/06</span>
+                            <span class="text-danger fw-semibold">Quá hạn</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Checklist Options -->
+            <div class="preview-checklist">
+                <!-- Option 1 -->
+                <div class="checklist-item" id="itemOverview">
+                    <div class="checklist-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div class="checklist-text">
+                        <h4>Thông tin người dùng</h4>
+                        <p>Họ tên, email và thời gian xuất báo cáo.</p>
+                    </div>
+                </div>
+
+                <!-- Option 2 -->
+                <div class="checklist-item" id="itemMetrics">
+                    <div class="checklist-icon green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <div class="checklist-text">
+                        <h4>Tổng quan số liệu</h4>
+                        <p>Các chỉ số tổng hợp trong khoảng thời gian đã chọn.</p>
+                    </div>
+                </div>
+
+                <!-- Option 3 -->
+                <div class="checklist-item" id="itemCharts">
+                    <div class="checklist-icon purple">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                    </div>
+                    <div class="checklist-text">
+                        <h4>Biểu đồ hoạt động</h4>
+                        <p>Xu hướng hoạt động, tiến độ và phân bổ trạng thái.</p>
+                    </div>
+                </div>
+
+                <!-- Option 4 -->
+                <div class="checklist-item" id="itemDetails">
+                    <div class="checklist-icon orange">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </div>
+                    <div class="checklist-text">
+                        <h4>Danh sách chi tiết</h4>
+                        <p>Danh sách lịch trình và task chi tiết.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Tips card -->
+            <div class="tips-card">
+                <h4>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+                    Mẹo
+                </h4>
+                <ul>
+                    <li>Chọn khoảng thời gian phù hợp để có báo cáo chính xác nhất.</li>
+                    <li>Bạn có thể xem trước trước khi xuất PDF.</li>
+                    <li>PDF sẽ được tải về thiết bị của bạn.</li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fromInput = document.getElementById('pdfFromDate');
+            const toInput = document.getElementById('pdfToDate');
+            const dateRangeSelect = document.getElementById('pdfDateRangePreset');
+            const dateAlertRange = document.getElementById('dateAlertRange');
+            const mockDateRange = document.getElementById('mockDateRange');
+
+            // Form element overrides
+            const form = document.getElementById('exportPdfForm');
+            const pdfModeInput = document.getElementById('pdfMode');
+            const btnPreviewPdf = document.getElementById('btnPreviewPdf');
+            const btnExportPdf = document.getElementById('btnExportPdf');
+            const btnPreviewTriggers = document.querySelectorAll('.btnPreviewTrigger');
+
+            // Checkboxes
+            const chkOverview = document.getElementById('chkOverview');
+            const chkCharts = document.getElementById('chkCharts');
+            const chkDetails = document.getElementById('chkDetails');
+
+            // Checkbox value sync inputs
+            const inputActivity = document.getElementById('includeActivity');
+            const inputSchedules = document.getElementById('includeSchedules');
+            const inputTasks = document.getElementById('includeTasks');
+
+            // Checklist indicator nodes
+            const itemMetrics = document.getElementById('itemMetrics');
+            const itemCharts = document.getElementById('itemCharts');
+            const itemDetails = document.getElementById('itemDetails');
+
+            // Mock PDF elements
+            const mockMetricsRow = document.getElementById('mockMetricsRow');
+            const mockChartsRow = document.getElementById('mockChartsRow');
+            const mockDetailsRow = document.getElementById('mockDetailsRow');
+
+            function formatDateString(dateStr) {
+                if (!dateStr) return '';
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+                return dateStr;
+            }
+
+            function updateDateAlert() {
+                const fromVal = fromInput.value;
+                const toVal = toInput.value;
+                let text = '';
+                let mockText = '';
+
+                if (fromVal && toVal) {
+                    text = `Dữ liệu báo cáo được tính từ ${formatDateString(fromVal)} đến ${formatDateString(toVal)}`;
+                    mockText = `Thời gian: ${formatDateString(fromVal)} - ${formatDateString(toVal)}`;
+                } else if (fromVal) {
+                    text = `Dữ liệu báo cáo được tính từ ${formatDateString(fromVal)}`;
+                    mockText = `Thời gian: Từ ${formatDateString(fromVal)}`;
+                } else if (toVal) {
+                    text = `Dữ liệu báo cáo được tính đến ${formatDateString(toVal)}`;
+                    mockText = `Thời gian: Đến ${formatDateString(toVal)}`;
+                } else {
+                    text = 'Dữ liệu báo cáo được tính cho toàn bộ thời gian';
+                    mockText = 'Thời gian: Tất cả các ngày';
+                }
+
+                dateAlertRange.textContent = text;
+                mockDateRange.textContent = mockText;
+            }
+
+            function syncPreviewAndInputs() {
+                const type = reportTypeSelect ? reportTypeSelect.value : 'personal';
+
+                if (type === 'personal') {
+                    // Update hidden inputs from checkboxes
+                    inputActivity.value = chkOverview.checked ? 'true' : 'false';
+                    inputSchedules.value = chkDetails.checked ? 'true' : 'false';
+                    inputTasks.value = chkDetails.checked ? 'true' : 'false';
+
+                    // Sync Checklist items opacity
+                    itemMetrics.style.opacity = chkOverview.checked ? '1' : '0.4';
+                    itemCharts.style.opacity = chkCharts.checked ? '1' : '0.4';
+                    itemDetails.style.opacity = chkDetails.checked ? '1' : '0.4';
+
+                    // Sync Mock PDF element visibility
+                    mockMetricsRow.style.display = chkOverview.checked ? 'flex' : 'none';
+                    mockChartsRow.style.display = chkCharts.checked ? 'flex' : 'none';
+                    mockDetailsRow.style.display = chkDetails.checked ? 'block' : 'none';
+                }
+                else if (type === 'schedules') {
+                    // Schedules only
+                    inputActivity.value = 'false';
+                    inputSchedules.value = 'true';
+                    inputTasks.value = 'false';
+
+                    itemMetrics.style.opacity = '0.4';
+                    itemCharts.style.opacity = '0.4';
+                    itemDetails.style.opacity = '1';
+
+                    mockMetricsRow.style.display = 'none';
+                    mockChartsRow.style.display = 'none';
+                    mockDetailsRow.style.display = 'block';
+                }
+                else if (type === 'tasks') {
+                    // Tasks only
+                    inputActivity.value = 'false';
+                    inputSchedules.value = 'false';
+                    inputTasks.value = 'true';
+
+                    itemMetrics.style.opacity = '0.4';
+                    itemCharts.style.opacity = '0.4';
+                    itemDetails.style.opacity = '1';
+
+                    mockMetricsRow.style.display = 'none';
+                    mockChartsRow.style.display = 'none';
+                    mockDetailsRow.style.display = 'block';
+                }
+                else if (type === 'performance') {
+                    // Performance only (metrics & charts, no details)
+                    inputActivity.value = 'true';
+                    inputSchedules.value = 'false';
+                    inputTasks.value = 'false';
+
+                    itemMetrics.style.opacity = '1';
+                    itemCharts.style.opacity = '1';
+                    itemDetails.style.opacity = '0.4';
+
+                    mockMetricsRow.style.display = 'flex';
+                    mockChartsRow.style.display = 'flex';
+                    mockDetailsRow.style.display = 'none';
+                }
+                else {
+                    // Admin system / users reports
+                    inputActivity.value = 'true';
+                    inputSchedules.value = 'true';
+                    inputTasks.value = 'true';
+
+                    itemMetrics.style.opacity = '1';
+                    itemCharts.style.opacity = '1';
+                    itemDetails.style.opacity = '1';
+
+                    mockMetricsRow.style.display = 'flex';
+                    mockChartsRow.style.display = 'flex';
+                    mockDetailsRow.style.display = 'block';
+                }
+            }
+
+            const formatDate = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
+            function handlePresetChange() {
+                const preset = dateRangeSelect.value;
+                const today = new Date();
+                let fromDate = null;
+                let toDate = today;
+
+                if (preset === '7days') {
+                    fromDate = new Date();
+                    fromDate.setDate(today.getDate() - 6);
+                } else if (preset === '14days') {
+                    fromDate = new Date();
+                    fromDate.setDate(today.getDate() - 13);
+                } else if (preset === '30days') {
+                    fromDate = new Date();
+                    fromDate.setDate(today.getDate() - 29);
+                } else if (preset === 'thisMonth') {
+                    fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                } else if (preset === 'lastMonth') {
+                    fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    toDate = new Date(today.getFullYear(), today.getMonth(), 0);
+                } else if (preset === 'custom') {
+                    return; // keep inputs as they are
+                }
+
+                fromInput.value = fromDate ? formatDate(fromDate) : '';
+                toInput.value = toDate ? formatDate(toDate) : '';
+                updateDateAlert();
+            }
+
+            function fetchDashboardStats() {
+                const fromVal = fromInput.value;
+                const toVal = toInput.value;
+                const userIdVal = document.getElementById('pdfUserId')?.value || '';
+
+                const params = new URLSearchParams();
+                if (fromVal) params.append('fromDate', fromVal);
+                if (toVal) params.append('toDate', toVal);
+                if (userIdVal) params.append('userId', userIdVal);
+
+                fetch(`/Reports/GetStats?${params.toString()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const kpiSchedules = document.querySelector('.report-kpi-grid article:nth-child(1) strong');
+                        if (kpiSchedules) kpiSchedules.textContent = data.totalSchedules.toLocaleString();
+
+                        const kpiTasks = document.querySelector('.report-kpi-grid article:nth-child(2) strong');
+                        if (kpiTasks) kpiTasks.textContent = data.totalTasks.toLocaleString();
+
+                        const kpiCompleted = document.querySelector('.report-kpi-grid article:nth-child(3) strong');
+                        if (kpiCompleted) kpiCompleted.textContent = data.completedTasks.toLocaleString();
+                        const kpiCompletedSub = document.querySelector('.report-kpi-grid article:nth-child(3) small');
+                        if (kpiCompletedSub) kpiCompletedSub.textContent = `${data.completedRate}% tổng task`;
+
+                        const kpiOverdue = document.querySelector('.report-kpi-grid article:nth-child(4) strong');
+                        if (kpiOverdue) kpiOverdue.textContent = data.overdueTasks.toLocaleString();
+
+                        const kpiRate = document.querySelector('.report-kpi-grid article:nth-child(5) strong');
+                        if (kpiRate) kpiRate.textContent = `${data.completedRate}%`;
+
+                        const mockSchedulesVal = document.querySelector('#mockMetricsRow div:nth-child(1) .fw-bold');
+                        if (mockSchedulesVal) mockSchedulesVal.textContent = data.totalSchedules.toLocaleString();
+
+                        const mockTasksVal = document.querySelector('#mockMetricsRow div:nth-child(2) .fw-bold');
+                        if (mockTasksVal) mockTasksVal.textContent = data.totalTasks.toLocaleString();
+
+                        const mockCompletedVal = document.querySelector('#mockMetricsRow div:nth-child(3) .fw-bold');
+                        if (mockCompletedVal) mockCompletedVal.textContent = data.completedTasks.toLocaleString();
+
+                        const mockOverdueVal = document.querySelector('#mockMetricsRow div:nth-child(4) .fw-bold');
+                        if (mockOverdueVal) mockOverdueVal.textContent = data.overdueTasks.toLocaleString();
+                    })
+                    .catch(err => console.error('Error fetching stats:', err));
+            }
+
+            // Event Listeners
+            fromInput.addEventListener('change', () => {
+                dateRangeSelect.value = 'custom';
+                updateDateAlert();
+                fetchDashboardStats();
+            });
+            toInput.addEventListener('change', () => {
+                dateRangeSelect.value = 'custom';
+                updateDateAlert();
+                fetchDashboardStats();
+            });
+            dateRangeSelect.addEventListener('change', () => {
+                handlePresetChange();
+                fetchDashboardStats();
+            });
+
+            chkOverview.addEventListener('change', syncPreviewAndInputs);
+            chkCharts.addEventListener('change', syncPreviewAndInputs);
+            chkDetails.addEventListener('change', syncPreviewAndInputs);
+
+            btnPreviewPdf.addEventListener('click', function () {
+                pdfModeInput.value = 'preview';
+                form.submit();
+            });
+
+            btnExportPdf.addEventListener('click', function () {
+                pdfModeInput.value = 'download';
+                form.submit();
+            });
+
+            btnPreviewTriggers.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    pdfModeInput.value = 'preview';
+                    form.submit();
+                });
+            });
+
+            // Initialize default dates (30 days ago) on load
+            const initToday = new Date();
+            const initThirtyDaysAgo = new Date();
+            initThirtyDaysAgo.setDate(initToday.getDate() - 29);
+
+            fromInput.value = formatDate(initThirtyDaysAgo);
+            toInput.value = formatDate(initToday);
+
+            syncPreviewAndInputs();
+            updateDateAlert();
+            fetchDashboardStats();
+
+            // Admin conditional logic if reportType changes
+            const reportTypeSelect = document.getElementById('pdfReportType');
+            const userIdContainer = document.getElementById('userIdContainer');
+            const pdfContentCheckboxesContainer = document.getElementById('pdfContentCheckboxesContainer');
+
+            if (reportTypeSelect) {
+                function toggleInputs() {
+                    const val = reportTypeSelect.value;
+                    if (val === 'personal') {
+                        if (userIdContainer) userIdContainer.style.display = 'block';
+                        if (pdfContentCheckboxesContainer) pdfContentCheckboxesContainer.style.display = 'block';
+                    } else {
+                        if (userIdContainer) userIdContainer.style.display = 'none';
+                        if (pdfContentCheckboxesContainer) pdfContentCheckboxesContainer.style.display = 'none';
+                    }
+                    syncPreviewAndInputs();
+                }
+                reportTypeSelect.addEventListener('change', toggleInputs);
+                toggleInputs(); // initial run
+            }
+
+            const pdfUserIdSelect = document.getElementById('pdfUserId');
+            if (pdfUserIdSelect) {
+                pdfUserIdSelect.addEventListener('change', fetchDashboardStats);
+            }
+        });
+    </script>
+}

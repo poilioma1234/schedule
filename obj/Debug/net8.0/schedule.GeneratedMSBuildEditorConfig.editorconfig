@@ -8,6 +8,7 @@ build_property.ProjectTypeGuids =
 build_property.InvariantGlobalization = 
 build_property.PlatformNeutralAssembly = 
 build_property.EnforceExtendedAnalyzerRules = 
+build_property.EntryPointFilePath = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = schedule
 build_property.RootNamespace = schedule
@@ -22,6 +23,10 @@ build_property._RazorSourceGeneratorDebug =
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
 
+[C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Areas/Identity/Pages/Account/ExternalLogin.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxFeHRlcm5hbExvZ2luLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Areas/Identity/Pages/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -34,12 +39,20 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Areas/Identity/Pages/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcX1ZpZXdTdGFydC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Activity/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWN0aXZpdHlcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Admin/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/AiChat/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWlDaGF0XEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Home/Index.cshtml]
@@ -78,6 +91,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2NoZWR1bGVcRGVsZXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Schedule/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2NoZWR1bGVcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Schedule/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2NoZWR1bGVcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -108,6 +125,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Tasks/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVGFza3NcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/TNWan/Downloads/WEB/WEB/ĐAWEB Ver13 (co the la FINAL)/ĐAWEB Ver13 (co the la FINAL)/ĐAWEBVS9/schedule/Views/Tasks/Delete.cshtml]

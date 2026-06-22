@@ -9,6 +9,7 @@ using schedule.Models;
 namespace schedule.Controllers
 {
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class ScheduleController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -70,6 +71,23 @@ namespace schedule.Controllers
 
             TempData["SuccessMessage"] = "Đã thêm lịch mới.";
             return RedirectToAction(nameof(Index));
+        }        [HttpGet]
+        public async Task<IActionResult> Details(int id)
+        {
+            var item = await _context.ScheduleItems
+                .Include(schedule => schedule.Tasks.OrderBy(task => task.Deadline))
+                .FirstOrDefaultAsync(schedule => schedule.Id == id);
+            if (item == null)
+            {
+                return NotFound();
+            }
+
+            if (!CanManage(item))
+            {
+                return Forbid();
+            }
+
+            return View(item);
         }
 
         [HttpGet]
@@ -279,12 +297,26 @@ namespace schedule.Controllers
                     .OrderByDescending(task => task.Priority)
                     .FirstOrDefault();
 
+                var startStr = item.start;
+                var endStr = item.end;
+                if (DateTime.TryParse(startStr, out DateTime startDt) && DateTime.TryParse(endStr, out DateTime endDt))
+                {
+                    if (endDt <= startDt)
+                    {
+                        endStr = startDt.AddMinutes(30).ToString("s");
+                    }
+                    else if ((endDt - startDt).TotalMinutes < 30)
+                    {
+                        endStr = startDt.AddMinutes(30).ToString("s");
+                    }
+                }
+
                 return new
                 {
                     item.id,
                     item.title,
-                    item.start,
-                    item.end,
+                    start = startStr,
+                    end = endStr,
                     color = highestPriority != null
                         ? highestPriority.Color
                         : item.isImportant ? "#dc3545" : "#0d6efd",

@@ -9,6 +9,7 @@ using schedule.ViewModels;
 namespace schedule.Controllers
 {
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class SettingsController : Controller
     {
         private readonly ApplicationDbContext _context;

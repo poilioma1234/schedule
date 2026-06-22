@@ -10,6 +10,7 @@ using schedule.ViewModels;
 namespace schedule.Controllers
 {
     [Authorize(Roles = "Admin")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class AdminController : Controller
     {
         private readonly ApplicationDbContext _context;

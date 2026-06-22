@@ -9,6 +9,7 @@ using schedule.Models;
 namespace schedule.Controllers
 {
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class TasksController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -20,7 +21,7 @@ namespace schedule.Controllers
             _userManager = userManager;
         }
 
-        public async Task<IActionResult> Index(string? searchString, string statusFilter = "all")
+        public async Task<IActionResult> Index(string? searchString, string statusFilter = "all", string dateFilter = "all")
         {
             var currentUserId = _userManager.GetUserId(User);
             var query = _context.TaskItems
@@ -40,19 +41,56 @@ namespace schedule.Controllers
 
             ViewBag.SearchString = searchString ?? string.Empty;
             ViewBag.StatusFilter = NormalizeStatusFilter(statusFilter);
+            ViewBag.DateFilter = NormalizeDateFilter(dateFilter);
             ViewBag.TotalTasks = allTasks.Count;
 
             return View(allTasks);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> Create(DateTime? date)
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            var today = date?.Date ?? DateTime.Today;
+
+            var schedulesQuery = _context.ScheduleItems.AsQueryable();
+            if (!User.IsInRole("Admin"))
+            {
+                schedulesQuery = schedulesQuery.Where(s => s.CreatedByUserId == currentUserId);
+            }
+            var schedules = await schedulesQuery.ToListAsync();
+
+            ViewBag.Schedules = schedules;
+
+            return View(new TaskItem
+            {
+                Deadline = today.AddHours(17),
+                Priority = TaskPriorityLevel.Medium,
+                Status = TaskItemStatus.NotStarted,
+                Color = TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Medium)
+            });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ScheduleItemId,Title,Description,Deadline,Status,Priority,Color,AttachmentUrl")] TaskItem task)
+        public async Task<IActionResult> Create([Bind("ScheduleItemId,Title,Description,Deadline,Status,Priority,Color,AttachmentUrl")] TaskItem task, string? returnUrl = null)
         {
             task.Id = 0;
             var schedule = await _context.ScheduleItems.FindAsync(task.ScheduleItemId);
             if (schedule == null)
             {
+                if (returnUrl == "tasks-list")
+                {
+                    TempData["TaskError"] = "Vui lòng chọn một lịch trình phù hợp.";
+                    var currentUserId = _userManager.GetUserId(User);
+                    var schedulesQuery = _context.ScheduleItems.AsQueryable();
+                    if (!User.IsInRole("Admin"))
+                    {
+                        schedulesQuery = schedulesQuery.Where(s => s.CreatedByUserId == currentUserId);
+                    }
+                    ViewBag.Schedules = await schedulesQuery.ToListAsync();
+                    return View("Create", task);
+                }
                 return NotFound();
             }
 
@@ -66,6 +104,17 @@ namespace schedule.Controllers
             if (!ModelState.IsValid)
             {
                 TempData["TaskError"] = "Task chưa hợp lệ. Vui lòng kiểm tra tiêu đề, deadline và link đính kèm.";
+                if (returnUrl == "tasks-list")
+                {
+                    var currentUserId = _userManager.GetUserId(User);
+                    var schedulesQuery = _context.ScheduleItems.AsQueryable();
+                    if (!User.IsInRole("Admin"))
+                    {
+                        schedulesQuery = schedulesQuery.Where(s => s.CreatedByUserId == currentUserId);
+                    }
+                    ViewBag.Schedules = await schedulesQuery.ToListAsync();
+                    return View("Create", task);
+                }
                 return RedirectToAction("Edit", "Schedule", new { id = task.ScheduleItemId });
             }
 
@@ -78,7 +127,11 @@ namespace schedule.Controllers
             _context.TaskItems.Add(task);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Đã thêm task vào lịch.";
+            TempData["SuccessMessage"] = "Đã thêm task mới.";
+            if (returnUrl == "tasks-list")
+            {
+                return RedirectToAction(nameof(Index));
+            }
             return RedirectToAction("Edit", "Schedule", new { id = task.ScheduleItemId });
         }
 
@@ -203,6 +256,18 @@ namespace schedule.Controllers
                 "overdue" => "overdue",
                 "completed" => "completed",
                 "open" => "open",
+                _ => "all"
+            };
+        }
+
+        private static string NormalizeDateFilter(string dateFilter)
+        {
+            return dateFilter.ToLowerInvariant() switch
+            {
+                "today" => "today",
+                "7days" => "7days",
+                "14days" => "14days",
+                "30days" => "30days",
                 _ => "all"
             };
         }

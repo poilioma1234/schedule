@@ -40,5 +40,10 @@ namespace schedule.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+        /// <summary>
+        /// Thời điểm email thông báo quá hạn đã được gửi. Null = chưa gửi.
+        /// </summary>
+        public DateTime? OverdueEmailSentAt { get; set; }
     }
 }

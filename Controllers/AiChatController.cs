@@ -12,23 +12,27 @@ using schedule.ViewModels;
 namespace schedule.Controllers
 {
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class AiChatController : Controller
     {
         private readonly IAiChatService _aiChatService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AiChatController> _logger;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly ILeaderboardService _leaderboardService;
 
         public AiChatController(
             IAiChatService aiChatService,
             ApplicationDbContext context,
             ILogger<AiChatController> logger,
-            UserManager<IdentityUser> userManager)
+            UserManager<IdentityUser> userManager,
+            ILeaderboardService leaderboardService)
         {
             _aiChatService = aiChatService;
             _context = context;
             _logger = logger;
             _userManager = userManager;
+            _leaderboardService = leaderboardService;
         }
 
         [HttpGet]
@@ -427,6 +431,8 @@ namespace schedule.Controllers
             CancellationToken cancellationToken)
         {
             var now = DateTime.Now;
+            var today = now.Date;
+
             var overdueTasks = await _context.TaskItems
                 .Include(task => task.ScheduleItem)
                 .Where(task =>
@@ -456,13 +462,219 @@ namespace schedule.Controllers
                 })
                 .ToListAsync(cancellationToken);
 
+            // Fetch public rankings and streaks for all users (both Admin and regular User can ask about this)
+            var monthStart = new DateTime(today.Year, today.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+            var leaderboardEntries = await _leaderboardService.BuildRowsAsync(monthStart, monthEnd);
+
+            var publicProfiles = await _context.UserProfiles
+                .AsNoTracking()
+                .Where(p => p.IsProfilePublic)
+                .ToListAsync(cancellationToken);
+
+            var publicUserIds = publicProfiles.Select(p => p.UserId).ToList();
+            var allPublicTasks = await _context.TaskItems
+                .AsNoTracking()
+                .Where(t => t.CreatedByUserId != null && publicUserIds.Contains(t.CreatedByUserId))
+                .ToListAsync(cancellationToken);
+
+            var userStreaks = publicProfiles.Select(p =>
+            {
+                var userTasks = allPublicTasks.Where(t => t.CreatedByUserId == p.UserId);
+                var streak = ActivityStatsHelper.CalculateCompletionStreak(userTasks, today);
+                return new
+                {
+                    p.DisplayName,
+                    p.UserId,
+                    CurrentStreak = streak.Current,
+                    LongestStreak = streak.Longest
+                };
+            }).OrderByDescending(x => x.CurrentStreak).ToList();
+
+            var leaderboardRows = leaderboardEntries.Select(r => $"| #{r.Rank} | {r.DisplayName} ({r.Email}) | {r.Score} điểm | {r.CompletedTaskCount} task |").ToList();
+            var streakRows = userStreaks.Select((s, idx) => $"| #{idx + 1} | {s.DisplayName} | {s.CurrentStreak} ngày | {s.LongestStreak} ngày |").ToList();
+
+            var publicRankingsSummary = $"""
+            ### BẢNG XẾP HẠNG THÁNG NÀY (Tháng {monthStart:MM/yyyy}):
+            | Hạng | Người dùng | Điểm số | Số task hoàn thành |
+            |---|---|---|---|
+            {(leaderboardRows.Any() ? string.Join("\n", leaderboardRows) : "| (Chưa có dữ liệu) | | | |")}
+
+            ### BẢNG XẾP HẠNG CHUỖI STREAK CÔNG KHAI (Hiện tại):
+            | Hạng | Tên người dùng | Chuỗi hiện tại | Chuỗi kỷ lục |
+            |---|---|---|---|
+            {(streakRows.Any() ? string.Join("\n", streakRows) : "| (Chưa có dữ liệu) | | | |")}
+            """;
+
+            string? systemSummary = null;
+            var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+            if (isAdmin)
+            {
+                // Query system-wide overview
+                var totalUsers = await _context.Users.CountAsync(cancellationToken);
+                var pendingReports = await _context.UserReports.CountAsync(r => r.Status == ReportStatus.Pending, cancellationToken);
+                var totalSchedules = await _context.ScheduleItems.CountAsync(cancellationToken);
+                var totalTasks = await _context.TaskItems.CountAsync(cancellationToken);
+                var completedTasks = await _context.TaskItems.CountAsync(t => t.Status == TaskItemStatus.Completed, cancellationToken);
+                var overdueTasksCount = await _context.TaskItems.CountAsync(t => t.Status != TaskItemStatus.Completed && t.Deadline < now, cancellationToken);
+
+                // Query details for each user
+                var usersList = await _userManager.Users.AsNoTracking().ToListAsync(cancellationToken);
+                var profileMap = await _context.UserProfiles.AsNoTracking().ToDictionaryAsync(p => p.UserId, p => p, cancellationToken);
+                var adminRoleId = await _context.Roles.Where(r => r.Name == "Admin").Select(r => r.Id).FirstOrDefaultAsync(cancellationToken);
+                var adminUserIds = adminRoleId != null 
+                    ? await _context.UserRoles.Where(ur => ur.RoleId == adminRoleId).Select(ur => ur.UserId).ToListAsync(cancellationToken)
+                    : new List<string>();
+
+                var userDetailsList = new List<string>();
+                foreach (var u in usersList)
+                {
+                    var isUAdmin = adminUserIds.Contains(u.Id);
+                    var displayName = profileMap.TryGetValue(u.Id, out var profile) ? profile.DisplayName : (u.Email ?? u.UserName ?? "");
+                    var isLocked = u.LockoutEnd.HasValue && u.LockoutEnd > DateTimeOffset.UtcNow;
+                    
+                    var uSchedules = await _context.ScheduleItems.CountAsync(s => s.CreatedByUserId == u.Id, cancellationToken);
+                    var uTasks = await _context.TaskItems.CountAsync(t => t.CreatedByUserId == u.Id, cancellationToken);
+                    var uCompleted = await _context.TaskItems.CountAsync(t => t.CreatedByUserId == u.Id && t.Status == TaskItemStatus.Completed, cancellationToken);
+                    var uOverdue = await _context.TaskItems.CountAsync(t => t.CreatedByUserId == u.Id && t.Status != TaskItemStatus.Completed && t.Deadline < now, cancellationToken);
+
+                    userDetailsList.Add($"| {u.Email} | {displayName} | {(isUAdmin ? "Admin" : "User")} | {(isLocked ? "Bị khóa" : "Hoạt động")} | {uSchedules} | {uTasks} | {uCompleted} | {uOverdue} |");
+                }
+
+                var tomorrow = today.AddDays(1);
+                var tasksDueToday = await _context.TaskItems
+                    .Include(t => t.ScheduleItem)
+                    .Where(t => t.Status != TaskItemStatus.Completed && t.Deadline >= today && t.Deadline < tomorrow)
+                    .OrderBy(t => t.Deadline)
+                    .Select(t => new {
+                        t.Title,
+                        t.Deadline,
+                        t.Priority,
+                        t.CreatedByEmail,
+                        ScheduleTitle = t.ScheduleItem != null ? t.ScheduleItem.Title : null
+                    })
+                    .ToListAsync(cancellationToken);
+
+                var tasksDueTodayDetailsList = new List<string>();
+                foreach (var t in tasksDueToday)
+                {
+                    var isPassed = t.Deadline < now;
+                    var statusStr = isPassed ? "Đã quá hạn" : "Chưa quá hạn";
+                    tasksDueTodayDetailsList.Add($"- Task: \"{t.Title}\" | Hạn chót: {t.Deadline:HH:mm} ({statusStr}) | Ưu tiên: {t.Priority} | Tạo bởi: {t.CreatedByEmail} | Lịch trình: {t.ScheduleTitle}");
+                }
+
+                var tasksDueTodaySection = tasksDueTodayDetailsList.Any()
+                    ? string.Join("\n", tasksDueTodayDetailsList)
+                    : "- Không có task nào có hạn chót trong ngày hôm nay.";
+
+                var allOverdueTasks = await _context.TaskItems
+                    .Include(t => t.ScheduleItem)
+                    .Where(t => t.Status != TaskItemStatus.Completed && t.Deadline < now)
+                    .OrderByDescending(t => t.Priority)
+                    .ThenBy(t => t.Deadline)
+                    .Take(100)
+                    .Select(t => new {
+                        t.Title,
+                        t.Deadline,
+                        t.Priority,
+                        t.CreatedByEmail,
+                        ScheduleTitle = t.ScheduleItem != null ? t.ScheduleItem.Title : null
+                    })
+                    .ToListAsync(cancellationToken);
+
+                var allOverdueDetailsList = new List<string>();
+                foreach (var t in allOverdueTasks)
+                {
+                    allOverdueDetailsList.Add($"- Task: \"{t.Title}\" | Hạn chót: {t.Deadline:yyyy-MM-dd HH:mm} | Ưu tiên: {t.Priority} | Tạo bởi: {t.CreatedByEmail} | Lịch trình: {t.ScheduleTitle}");
+                }
+
+                var allOverdueSection = allOverdueDetailsList.Any()
+                    ? string.Join("\n", allOverdueDetailsList)
+                    : "- Không có task nào đang quá hạn trên hệ thống.";
+
+                // Compile history of overdue task counts and titles per day/user for the last 7 days
+                var allTasksInDb = await _context.TaskItems
+                    .AsNoTracking()
+                    .Select(t => new { t.Title, t.CreatedByEmail, t.Deadline, t.Status, t.UpdatedAt })
+                    .ToListAsync(cancellationToken);
+
+                var userEmails = usersList.Select(u => u.Email).ToList();
+                var overdueByDayAndUser = new Dictionary<string, Dictionary<string, List<string>>>();
+
+                for (int i = 0; i < 8; i++)
+                {
+                    var targetDate = now.Date.AddDays(-i);
+                    var dateStr = targetDate.ToString("yyyy-MM-dd");
+                    var limit = targetDate.AddDays(1);
+                    
+                    var userTasksMap = allTasksInDb
+                        .Where(t => t.Deadline >= targetDate && t.Deadline < limit && !string.IsNullOrEmpty(t.CreatedByEmail))
+                        .Where(t => t.Status != TaskItemStatus.Completed || t.UpdatedAt >= limit)
+                        .GroupBy(t => t.CreatedByEmail!)
+                        .ToDictionary(g => g.Key, g => g.Select(t => t.Title).ToList());
+                        
+                    overdueByDayAndUser[dateStr] = userTasksMap;
+                }
+
+                var overdueHistoryRows = new List<string>();
+                foreach (var kvp in overdueByDayAndUser)
+                {
+                    var dateStr = kvp.Key;
+                    foreach (var userEmail in userEmails)
+                    {
+                        if (string.IsNullOrEmpty(userEmail)) continue;
+                        if (kvp.Value.TryGetValue(userEmail, out var taskTitles) && taskTitles.Any())
+                        {
+                            var count = taskTitles.Count;
+                            var titlesStr = string.Join("; ", taskTitles);
+                            overdueHistoryRows.Add($"| {dateStr} | {userEmail} | {count} | {titlesStr} |");
+                        }
+                    }
+                }
+                var overdueHistorySection = overdueHistoryRows.Any()
+                    ? string.Join("\n", overdueHistoryRows)
+                    : "| (Không có) | | | |";
+
+                systemSummary = $"""
+                {publicRankingsSummary}
+
+                ### THÔNG TIN HỆ THỐNG DÀNH RIÊNG CHO ADMIN (TUYỆT ĐỐI BẢO MẬT):
+                - Tổng số người dùng: {totalUsers}
+                - Tổng số lịch trình: {totalSchedules}
+                - Tổng số nhiệm vụ (Tasks): {totalTasks} (Đã xong: {completedTasks}, Quá hạn: {overdueTasksCount})
+                - Phản ánh từ user chưa xử lý: {pendingReports}
+
+                ### Danh sách chi tiết người dùng:
+                | Email | Tên hiển thị | Vai trò | Trạng thái | Lịch trình | Tasks | Đã xong | Quá hạn |
+                |---|---|---|---|---|---|---|---|
+                {string.Join("\n", userDetailsList)}
+
+                ### Bảng thống kê số lượng và tên các task có HẠN CHÓT (Deadline) trong ngày đó nhưng bị quá hạn (chưa hoàn thành tính đến cuối ngày đó) của từng User (7 ngày qua):
+                | Ngày (yyyy-MM-dd) | Email người dùng | Số lượng task quá hạn có hạn chót trong ngày | Danh sách tên task quá hạn |
+                |---|---|---|---|
+                {overdueHistorySection}
+
+                ### Danh sách Task có hạn chót trong hôm nay (Chưa hoàn thành):
+                {tasksDueTodaySection}
+
+                ### Danh sách các Task đang quá hạn trên hệ thống (Tối đa 100 task):
+                {allOverdueSection}
+                """;
+            }
+            else
+            {
+                systemSummary = publicRankingsSummary;
+            }
+
             return new AiChatRequestContext
             {
                 Prompt = prompt,
                 UserEmail = user.Email ?? User.Identity?.Name ?? "user",
                 Now = now,
                 OverdueTasks = overdueTasks,
-                UpcomingSchedules = upcomingSchedules
+                UpcomingSchedules = upcomingSchedules,
+                IsAdmin = isAdmin,
+                SystemSummaryPrompt = systemSummary
             };
         }
 

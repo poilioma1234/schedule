@@ -37,7 +37,7 @@
                             <span class="text-muted text-uppercase small fw-bold font-monospace">Hôm Nay Bạn Có</span>
                             <div class="display-4 fw-bold my-2 text-primary">@Model.TodayTaskCount</div>
                             <span class="small text-danger fw-semibold">
-                                <i class="bi bi-exclamation-triangle-fill"></i> @Model.OverdueTaskCount task quá hạn cần xử lý!
+                                <i class="bi bi-exclamation-triangle-fill"></i> @Model.OverdueTaskCount task quá hạn hôm nay cần xử lý!
                             </span>
                             <a asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="today" class="btn btn-primary-subtle btn-sm mt-3 w-100 py-2 rounded-3 text-primary border-0 fw-semibold">Xem chi tiết</a>
                         </div>
@@ -55,8 +55,8 @@
                             📅
                         </div>
                         <div>
-                            <span class="text-muted small text-uppercase fw-semibold">Tổng lịch trình</span>
-                            <h4 class="mb-0 fw-bold">@Model.TotalSchedules</h4>
+                            <span class="text-muted small text-uppercase fw-semibold">Lịch trình hôm nay</span>
+                            <h4 class="mb-0 fw-bold">@Model.TodaySchedules</h4>
                         </div>
                     </div>
                 </div>
@@ -81,7 +81,7 @@
                             ⚠️
                         </div>
                         <div>
-                            <span class="text-muted small text-uppercase fw-semibold">Task quá hạn</span>
+                            <span class="text-muted small text-uppercase fw-semibold">Task quá hạn hôm nay</span>
                             <h4 class="mb-0 fw-bold text-danger">@Model.OverdueTaskCount</h4>
                         </div>
                     </div>
@@ -94,7 +94,7 @@
                             ⭐
                         </div>
                         <div>
-                            <span class="text-muted small text-uppercase fw-semibold">Lịch quan trọng</span>
+                            <span class="text-muted small text-uppercase fw-semibold">Lịch quan trọng hôm nay</span>
                             <h4 class="mb-0 fw-bold text-warning">@Model.ImportantSchedules</h4>
                         </div>
                     </div>
@@ -197,7 +197,7 @@
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm h-100 border-start border-danger border-2">
                     <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                        <h5 class="m-0 fw-bold text-danger">Task Quá Hạn</h5>
+                        <h5 class="m-0 fw-bold text-danger">Task Quá Hạn Hôm nay</h5>
                         <span class="badge bg-danger">@Model.OverdueTaskCount</span>
                     </div>
                     <div class="card-body p-0">
@@ -229,7 +229,7 @@
                         </div>
                     </div>
                     <div class="card-footer bg-white border-0 text-center py-3">
-                        <a asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="overdue" class="btn btn-outline-danger btn-sm rounded-pill px-4">Xem tất cả trễ hạn</a>
+                        <a asp-controller="Tasks" asp-action="Index" asp-route-statusFilter="overdue" asp-route-dateFilter="today" class="btn btn-outline-danger btn-sm rounded-pill px-4">Xem tất cả trễ hạn</a>
                     </div>
                 </div>
             </div>
@@ -241,7 +241,7 @@
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-white border-0 py-3">
-                        <h5 class="m-0 fw-bold text-dark">Phân Phối Task</h5>
+                        <h5 class="m-0 fw-bold text-dark">Phân Phối Task Hôm Nay</h5>
                     </div>
                     <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
                         <div style="position: relative; width: 180px; height: 180px;">

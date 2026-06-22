@@ -6,6 +6,16 @@
     var isAdminViewingUser = User.IsInRole("Admin") && ViewBag.ViewingUserEmail != null;
 }
 
+<style>
+    .schedule-title-link {
+        transition: color 0.15s ease-in-out;
+    }
+    .schedule-title-link:hover {
+        color: #2563eb !important;
+        text-decoration: underline !important;
+    }
+</style>
+
 <div class="container-fluid px-4 py-4">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -89,9 +99,11 @@
                             <tr>
                                 <!-- Left border colored highlighting -->
                                 <td style="border-left: 4px solid @(overdueTaskCount > 0 ? "#dc3545" : (item.IsImportant ? "#ffc107" : "#0d6efd")); padding-left: 1rem;">
-                                    <div class="fw-semibold text-dark mb-0">@item.Title</div>
+                                    <a class="fw-semibold text-decoration-none text-dark schedule-title-link d-inline-block mb-0" asp-action="Details" asp-route-id="@item.Id">@item.Title</a>
                                     <small class="text-muted d-block text-truncate" style="max-width: 280px;">
-                                        @(item.Description ?? "Không có mô tả chi tiết")
+                                        @(string.IsNullOrWhiteSpace(item.Description) 
+                                            ? "Không có mô tả chi tiết" 
+                                            : System.Text.RegularExpressions.Regex.Replace(item.Description, "<.*?>", string.Empty))
                                     </small>
                                 </td>
                                 <td>
@@ -123,6 +135,8 @@
                                             Menu ▾
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                            <li><a class="dropdown-item" asp-action="Details" asp-route-id="@item.Id">Xem chi tiết</a></li>
+                                            <li><hr class="dropdown-divider"></li>
                                             @if (canEdit)
                                             {
                                                 <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">Sửa lịch trình</a></li>

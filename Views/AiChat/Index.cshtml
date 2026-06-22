@@ -114,8 +114,8 @@
                                     var schedule = message.Plan.Schedules[i];
                                     <div class="ai-plan-card">
                                         <div class="form-check mb-2">
-                                            <input type="hidden" name="Schedules[@i].Include" value="false" />
                                             <input class="form-check-input" type="checkbox" name="Schedules[@i].Include" value="true" checked />
+                                            <input type="hidden" name="Schedules[@i].Include" value="false" />
                                             <label class="form-check-label fw-semibold">Áp dụng lịch này</label>
                                         </div>
 
@@ -162,8 +162,8 @@
                                                     var task = schedule.Tasks[j];
                                                     <div class="ai-task-row">
                                                         <div class="form-check">
-                                                            <input type="hidden" name="Schedules[@i].Tasks[@j].Include" value="false" />
                                                             <input class="form-check-input" type="checkbox" name="Schedules[@i].Tasks[@j].Include" value="true" checked />
+                                                            <input type="hidden" name="Schedules[@i].Tasks[@j].Include" value="false" />
                                                         </div>
                                                         <div>
                                                             <label class="form-label">Task</label>
@@ -253,6 +253,44 @@
                     inputForm.requestSubmit();
                 } else {
                     inputForm.submit();
+                }
+            });
+
+            inputForm.addEventListener('submit', () => {
+                const sendBtn = inputForm.querySelector('.ai-chat-send');
+                if (sendBtn) {
+                    sendBtn.disabled = true;
+                    sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                }
+                if (promptInput) {
+                    promptInput.readOnly = true;
+                }
+
+                const thread = document.querySelector('[data-ai-chat-thread]');
+                if (thread) {
+                    const emptyState = thread.querySelector('.empty-state');
+                    if (emptyState) {
+                        emptyState.remove();
+                    }
+
+                    const thinkingMsg = document.createElement('article');
+                    thinkingMsg.className = 'ai-message ai-message-assistant thinking-message';
+                    thinkingMsg.innerHTML = `
+                        <div class="ai-message-meta">
+                            <strong>AI</strong>
+                            <span>Đang suy nghĩ...</span>
+                        </div>
+                        <p class="mb-0">
+                            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+                            AI đang suy nghĩ và phân tích dữ liệu...
+                        </p>
+                    `;
+                    thread.appendChild(thinkingMsg);
+                    thread.scrollTop = thread.scrollHeight;
+                    thinkingMsg.scrollIntoView({
+                        block: 'end',
+                        inline: 'nearest'
+                    });
                 }
             });
         }

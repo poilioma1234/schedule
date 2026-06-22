@@ -24,4 +24,18 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    <script>
+        ClassicEditor
+            .create(document.querySelector('#ck-task-desc'), {
+                toolbar: {
+                    items: ['heading', '|', 'bold', 'italic', 'underline', '|',
+                            'bulletedList', 'numberedList', '|',
+                            'link', 'blockQuote', '|', 'undo', 'redo']
+                },
+                placeholder: 'Nhập mô tả chi tiết cho task...',
+                language: 'vi'
+            })
+            .catch(err => console.error('CKEditor Task:', err));
+    </script>
 }

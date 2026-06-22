@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using schedule.Data;
 using schedule.Models;
@@ -42,6 +44,9 @@ namespace schedule
             {
                 options.LoginPath = "/Identity/Account/Login";
                 options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SameSite = SameSiteMode.Lax;
             });
 
             var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
@@ -66,10 +71,65 @@ namespace schedule
             builder.Services.AddHostedService<ReminderService>();
             builder.Services.AddControllersWithViews();
             builder.Services.AddRazorPages();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "Schedule Manager API",
+                    Version = "v1",
+                    Description = "REST API for Schedule, Task, Leaderboard and AI Assistant modules."
+                });
+
+                // Filter to only include API endpoints (under /api) in Swagger
+                options.DocInclusionPredicate((docName, apiDesc) =>
+                {
+                    return apiDesc.RelativePath != null && apiDesc.RelativePath.StartsWith("api/", StringComparison.OrdinalIgnoreCase);
+                });
+
+                // Configure Swagger to support JWT / Cookie security visual representation
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Enter JWT Bearer token"
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
 
             QuestPDF.Settings.License = LicenseType.Community;
 
             var app = builder.Build();
+
+            // Configure forwarded headers to support HTTPS redirect behind Nginx/Cloudflare/Ngrok
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+
+            // Enable Swagger middleware in all environments
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Schedule Manager API v1");
+            });
 
             if (!app.Environment.IsDevelopment())
             {

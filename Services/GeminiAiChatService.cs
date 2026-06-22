@@ -8,7 +8,6 @@ namespace schedule.Services
 {
     public class GeminiAiChatService : IAiChatService
     {
-        private const string Endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{0}:generateContent?key={1}";
         private readonly HttpClient _httpClient;
         private readonly ILogger<GeminiAiChatService> _logger;
         private readonly GeminiAiSettings _settings;
@@ -41,13 +40,39 @@ namespace schedule.Services
                 };
             }
 
-            var request = BuildGeminiRequest(context);
-            var url = string.Format(
-                Endpoint,
-                Uri.EscapeDataString(_settings.Model),
-                Uri.EscapeDataString(_settings.ApiKey));
+            var isOpenRouter = !string.IsNullOrWhiteSpace(_settings.Endpoint) && _settings.Endpoint.Contains("openrouter.ai");
+            HttpRequestMessage requestMessage;
 
-            using var response = await _httpClient.PostAsJsonAsync(url, request, cancellationToken);
+            if (isOpenRouter)
+            {
+                var request = BuildOpenRouterRequest(context);
+                requestMessage = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint)
+                {
+                    Content = JsonContent.Create(request)
+                };
+                requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+                requestMessage.Headers.Add("HTTP-Referer", "https://github.com/schedule-manager");
+                requestMessage.Headers.Add("X-Title", "Schedule Manager");
+            }
+            else
+            {
+                var endpointTemplate = string.IsNullOrWhiteSpace(_settings.Endpoint)
+                    ? "https://generativelanguage.googleapis.com/v1beta/models/{0}:generateContent?key={1}"
+                    : _settings.Endpoint;
+
+                var url = string.Format(
+                    endpointTemplate,
+                    Uri.EscapeDataString(_settings.Model),
+                    Uri.EscapeDataString(_settings.ApiKey));
+
+                var request = BuildGeminiRequest(context);
+                requestMessage = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = JsonContent.Create(request)
+                };
+            }
+
+            using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -65,6 +90,7 @@ namespace schedule.Services
             }
 
             var text = ExtractCandidateText(responseBody);
+            _logger.LogInformation("Raw AI Text parsed: {Text}", text);
             var result = DeserializePlan(text);
 
             NormalizePlan(result.Plan);
@@ -85,10 +111,27 @@ namespace schedule.Services
                             Bạn là trợ lý AI cho ứng dụng Schedule Manager.
                             Nhiệm vụ: gợi ý lịch học/công việc, chia nhỏ thành task, đề xuất deadline và ưu tiên.
                             Luôn trả lời tiếng Việt, ngắn gọn, thực dụng.
-                            Nếu người dùng hỏi phân tích task quá hạn, hãy nêu cách sắp xếp lại theo deadline và mức ưu tiên.
-                            Nếu tạo lịch, hãy trả về các mốc thời gian hợp lý trong tương lai theo giờ địa phương.
-                            Chỉ tạo tối đa 10 lịch, mỗi lịch tối đa 5 task để tiết kiệm token.
-                            Không hứa rằng lịch đã được lưu; người dùng phải bấm Áp dụng vào calendar.
+                            
+                            BẢO MẬT & VAI TRÒ:
+                            - Nếu người dùng đăng nhập là User bình thường, bạn chỉ có quyền truy cập và phân tích dữ liệu cá nhân của chính user đó (trong phần Task quá hạn và Lịch sắp tới của họ) và thông tin Bảng xếp hạng / Chuỗi Streak công khai của các người dùng trong hệ thống (được cung cấp ở phần thông tin công khai). Tuyệt đối không được biết, không được phân tích, và không được bịa ra thông tin riêng tư (như danh sách task riêng tư) của bất kỳ người dùng khác.
+                            - Chỉ khi người dùng đăng nhập là ADMIN (được đánh dấu trong context) thì bạn mới được cung cấp và phân tích dữ liệu thống kê chi tiết, lịch sử quá hạn riêng tư của các user khác.
+                            
+                            GIAO TIẾP & TRẢ LỜI:
+                            - Nếu Admin/User chào hỏi thông thường (ví dụ: "chào", "chào bạn", "hello", "hi", "xin chào"), bạn CHỈ cần chào lại một cách lịch sự, ngắn gọn và hỏi xem có thể giúp gì cho họ. Tuyệt đối KHÔNG tự động liệt kê bất kỳ số liệu thống kê hoặc danh sách task quá hạn nào khi chào hỏi.
+                            - Khi Admin hỏi xem các task quá hạn của các user trong hôm qua/nay/ngày nào đó trong quá khứ:
+                              + CHỈ đưa ra tên hiển thị (hoặc email) của user đó và số lượng task quá hạn tương ứng của họ trên ngày đó. Bạn có thể liệt kê thêm tiêu đề các task quá hạn của họ nếu cần thiết.
+                              + Tuyệt đối KHÔNG hiển thị các số liệu thống kê chung không liên quan của toàn hệ thống (như tổng số task hệ thống, tỷ lệ phần trạng thái quá hạn toàn hệ thống).
+                              + Tuyệt đối KHÔNG tự động đưa ra các quy trình đề xuất, lời khuyên xử lý, bài học, hay định hướng quy trình trừ khi Admin yêu cầu tư vấn.
+                              + Trả lời cực kỳ ngắn gọn, trực diện, đúng trọng tâm câu hỏi.
+                            - Khi User hỏi về Bảng xếp hạng hoặc Chuỗi Streak:
+                              + Sử dụng dữ liệu Bảng xếp hạng / Chuỗi Streak công khai được cung cấp để trả lời chính xác, trực tiếp câu hỏi (ví dụ: "Ai có chuỗi cao nhất?", "Hạng của tôi/ai đó là bao nhiêu?").
+                              + Trả lời ngắn gọn, thân thiện.
+                            
+                            LẬP LỊCH:
+                            - Nếu người dùng (đặc biệt là Admin) chỉ hỏi để xem thông tin, phân tích dữ liệu, báo cáo hoặc thống kê mà không yêu cầu tạo lịch mới, bạn hãy trả về danh sách lịch (schedules) là rỗng, và tập trung viết câu trả lời phân tích chi tiết, đầy đủ thông tin vào phần reply.
+                            - Nếu tạo lịch, hãy trả về các mốc thời gian hợp lý trong tương lai theo giờ địa phương.
+                            - Chỉ tạo tối đa 10 lịch, mỗi lịch tối đa 5 task để tiết kiệm token.
+                            - Không hứa rằng lịch đã được lưu; người dùng phải bấm Áp dụng vào calendar.
                             """
                         }
                     }
@@ -114,6 +157,49 @@ namespace schedule.Services
             };
         }
 
+        private object BuildOpenRouterRequest(AiChatRequestContext context)
+        {
+            var systemInstructionText = """
+                Bạn là trợ lý AI cho ứng dụng Schedule Manager.
+                Nhiệm vụ: gợi ý lịch học/công việc, chia nhỏ thành task, đề xuất deadline và ưu tiên.
+                Luôn trả lời tiếng Việt, ngắn gọn, thực dụng.
+                
+                BẢO MẬT & VAI TRÒ:
+                - Nếu người dùng đăng nhập là User bình thường, bạn chỉ có quyền truy cập và phân tích dữ liệu cá nhân của chính user đó (trong phần Task quá hạn và Lịch sắp tới của họ) và thông tin Bảng xếp hạng / Chuỗi Streak công khai của các người dùng trong hệ thống (được cung cấp ở phần thông tin công khai). Tuyệt đối không được biết, không được phân tích, và không được bịa ra thông tin riêng tư (như danh sách task riêng tư) của bất kỳ người dùng khác.
+                - Chỉ khi người dùng đăng nhập là ADMIN (được đánh dấu trong context) thì bạn mới được cung cấp và phân tích dữ liệu thống kê chi tiết, lịch sử quá hạn riêng tư của các user khác.
+                
+                GIAO TIẾP & TRẢ LỜI:
+                - Nếu Admin/User chào hỏi thông thường (ví dụ: "chào", "chào bạn", "hello", "hi", "xin chào"), bạn CHỈ cần chào lại một cách lịch sự, ngắn gọn và hỏi xem có thể giúp gì cho họ. Tuyệt đối KHÔNG tự động liệt kê bất kỳ số liệu thống kê hoặc danh sách task quá hạn nào khi chào hỏi.
+                - Khi Admin hỏi xem các task quá hạn của các user trong hôm qua/nay/ngày nào đó trong quá khứ:
+                  + CHỈ đưa ra tên hiển thị (hoặc email) của user đó và số lượng task quá hạn tương ứng của họ trên ngày đó. Bạn có thể liệt kê thêm tiêu đề các task quá hạn của họ nếu cần thiết.
+                  + Tuyệt đối KHÔNG hiển thị các số liệu thống kê chung không liên quan của toàn hệ thống (như tổng số task hệ thống, tỷ lệ phần trạng thái quá hạn toàn hệ thống).
+                  + Tuyệt đối KHÔNG tự động đưa ra các quy trình đề xuất, lời khuyên xử lý, bài học, hay định hướng quy trình trừ khi Admin yêu cầu tư vấn.
+                  + Trả lời cực kỳ ngắn gọn, trực diện, đúng trọng tâm câu hỏi.
+                - Khi User hỏi về Bảng xếp hạng hoặc Chuỗi Streak:
+                  + Sử dụng dữ liệu Bảng xếp hạng / Chuỗi Streak công khai được cung cấp để trả lời chính xác, trực tiếp câu hỏi (ví dụ: "Ai có chuỗi cao nhất?", "Hạng của tôi/ai đó là bao nhiêu?").
+                  + Trả lời ngắn gọn, thân thiện.
+                
+                LẬP LỊCH:
+                - Nếu người dùng (đặc biệt là Admin) chỉ hỏi để xem thông tin, phân tích dữ liệu, báo cáo hoặc thống kê mà không yêu cầu tạo lịch mới, bạn hãy trả về danh sách lịch (schedules) là rỗng, và tập trung viết câu trả lời phân tích chi tiết, đầy đủ thông tin vào phần reply.
+                - Nếu tạo lịch, hãy trả về các mốc thời gian hợp lý trong tương lai theo giờ địa phương.
+                - Chỉ tạo tối đa 10 lịch, mỗi lịch tối đa 5 task để tiết kiệm token.
+                - Không hứa rằng lịch đã được lưu; người dùng phải bấm Áp dụng vào calendar.
+                """;
+
+            return new
+            {
+                model = _settings.Model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemInstructionText },
+                    new { role = "user", content = BuildPrompt(context) }
+                },
+                temperature = _settings.Temperature,
+                max_tokens = _settings.MaxOutputTokens,
+                response_format = new { type = "json_object" }
+            };
+        }
+
         private static string BuildPrompt(AiChatRequestContext context)
         {
             var overdue = context.OverdueTasks.Any()
@@ -126,9 +212,19 @@ namespace schedule.Services
                     $"- {schedule.Title}; {schedule.StartTime:yyyy-MM-dd HH:mm} - {schedule.EndTime:yyyy-MM-dd HH:mm}"))
                 : "- Chưa có lịch sắp tới.";
 
+            var userContext = "";
+            if (context.IsAdmin && !string.IsNullOrWhiteSpace(context.SystemSummaryPrompt))
+            {
+                userContext = $"\n\nBẠN ĐANG TRÒ CHUYỆN VỚI QUẢN TRỊ VIÊN (ADMIN). Dữ liệu hoạt động toàn hệ thống của tất cả các user:\n{context.SystemSummaryPrompt}\nHãy sử dụng các số liệu trên để trả lời, phân tích, lập biểu đồ văn bản hoặc đánh giá hiệu suất khi Admin yêu cầu.";
+            }
+            else if (!context.IsAdmin && !string.IsNullOrWhiteSpace(context.SystemSummaryPrompt))
+            {
+                userContext = $"\n\nTHÔNG TIN CÔNG KHAI HỆ THỐNG (Bảng xếp hạng và chuỗi streak của các user công khai):\n{context.SystemSummaryPrompt}\nBạn có thể sử dụng dữ liệu này để trả lời các câu hỏi của người dùng về xếp hạng, so sánh hoặc ai đang giữ chuỗi streak cao nhất hiện tại.";
+            }
+
             return $"""
                    Hôm nay: {context.Now:yyyy-MM-dd HH:mm}
-                   User: {context.UserEmail}
+                   User: {context.UserEmail} {userContext}
 
                    Yêu cầu của user:
                    {context.Prompt}
@@ -197,23 +293,53 @@ namespace schedule.Services
         private static string ExtractCandidateText(string responseBody)
         {
             using var document = JsonDocument.Parse(responseBody);
-            var candidates = document.RootElement.GetProperty("candidates");
+            var root = document.RootElement;
 
-            if (candidates.GetArrayLength() == 0)
+            if (root.TryGetProperty("choices", out var choices) &&
+                choices.ValueKind == JsonValueKind.Array &&
+                choices.GetArrayLength() > 0)
             {
-                return "{}";
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var content))
+                {
+                    return content.GetString() ?? "{}";
+                }
             }
 
-            var parts = candidates[0].GetProperty("content").GetProperty("parts");
-            return parts.GetArrayLength() == 0
-                ? "{}"
-                : parts[0].GetProperty("text").GetString() ?? "{}";
+            if (root.TryGetProperty("candidates", out var candidates) &&
+                candidates.ValueKind == JsonValueKind.Array &&
+                candidates.GetArrayLength() > 0)
+            {
+                var firstCandidate = candidates[0];
+                if (firstCandidate.TryGetProperty("content", out var content) &&
+                    content.TryGetProperty("parts", out var parts) &&
+                    parts.ValueKind == JsonValueKind.Array &&
+                    parts.GetArrayLength() > 0)
+                {
+                    return parts[0].GetProperty("text").GetString() ?? "{}";
+                }
+            }
+
+            return "{}";
         }
 
         private static AiSchedulePlanResponse DeserializePlan(string text)
         {
             var payload = ExtractJsonObject(text);
-            var raw = JsonSerializer.Deserialize<GeminiPlanPayload>(payload, JsonOptions);
+            GeminiPlanPayload? raw = null;
+            try
+            {
+                raw = JsonSerializer.Deserialize<GeminiPlanPayload>(payload, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                var reply = ExtractReplyRegex(text);
+                if (!string.IsNullOrWhiteSpace(reply))
+                {
+                    raw = new GeminiPlanPayload { Reply = reply, Schedules = new() };
+                }
+            }
 
             var plan = new AiSchedulePlanViewModel
             {
@@ -232,6 +358,23 @@ namespace schedule.Services
             };
         }
 
+        private static string ExtractReplyRegex(string text)
+        {
+            try
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(text, @"""reply""\s*:\s*""((?:[^""\\]|\\.)*)""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    return match.Groups[1].Value.Replace("\\\"", "\"").Replace("\\n", "\n").Replace("\\r", "\r");
+                }
+            }
+            catch
+            {
+                // Ignore regex errors
+            }
+            return "";
+        }
+
         private static string ExtractJsonObject(string text)
         {
             var trimmed = text.Trim();
@@ -245,8 +388,8 @@ namespace schedule.Services
 
         private static AiScheduleSuggestionViewModel MapSchedule(GeminiSchedulePayload schedule)
         {
-            var start = ParseLocalDateTime(schedule.StartTime, DateTime.Now.AddHours(1));
-            var end = ParseLocalDateTime(schedule.EndTime, start.AddHours(1));
+            var start = ParseLocalDateTime(schedule.ActualStartTime, DateTime.Now.AddHours(1));
+            var end = ParseLocalDateTime(schedule.ActualEndTime, start.AddHours(1));
 
             if (end <= start)
             {
@@ -256,7 +399,7 @@ namespace schedule.Services
             return new AiScheduleSuggestionViewModel
             {
                 Include = true,
-                Title = TrimTo(schedule.Title, 120) ?? "Lịch AI đề xuất",
+                Title = TrimTo(schedule.ActualTitle, 120) ?? "Lịch AI đề xuất",
                 Description = TrimTo(schedule.Description, 500),
                 StartTime = start,
                 EndTime = end,
@@ -275,7 +418,7 @@ namespace schedule.Services
             return new AiTaskSuggestionViewModel
             {
                 Include = true,
-                Title = TrimTo(task.Title, 160) ?? "Task AI đề xuất",
+                Title = TrimTo(task.ActualTitle, 160) ?? "Task AI đề xuất",
                 Description = TrimTo(task.Description, 700),
                 Deadline = ParseLocalDateTime(task.Deadline, fallbackDeadline),
                 Priority = ParsePriority(task.Priority)
@@ -329,12 +472,21 @@ namespace schedule.Services
         private sealed class GeminiSchedulePayload
         {
             public string? Title { get; set; }
+            public string? Name { get; set; }
+
+            public string? ActualTitle => !string.IsNullOrWhiteSpace(Title) ? Title : Name;
 
             public string? Description { get; set; }
 
             public string? StartTime { get; set; }
+            public string? Start { get; set; }
+
+            public string? ActualStartTime => !string.IsNullOrWhiteSpace(StartTime) ? StartTime : Start;
 
             public string? EndTime { get; set; }
+            public string? End { get; set; }
+
+            public string? ActualEndTime => !string.IsNullOrWhiteSpace(EndTime) ? EndTime : End;
 
             public string? Location { get; set; }
 
@@ -348,6 +500,9 @@ namespace schedule.Services
         private sealed class GeminiTaskPayload
         {
             public string? Title { get; set; }
+            public string? Name { get; set; }
+
+            public string? ActualTitle => !string.IsNullOrWhiteSpace(Title) ? Title : Name;
 
             public string? Description { get; set; }
 

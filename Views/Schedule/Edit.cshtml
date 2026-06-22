@@ -59,7 +59,7 @@
                             </div>
                             @if (!string.IsNullOrWhiteSpace(task.Description))
                             {
-                                <p>@task.Description</p>
+                                <div class="task-description-content">@Html.Raw(task.Description)</div>
                             }
                             <div class="task-meta">
                                 <span>Deadline: @task.Deadline.ToString("dd/MM/yyyy HH:mm")</span>
@@ -98,4 +98,33 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    <script>
+        const ckConfig = {
+            toolbar: {
+                items: ['heading', '|', 'bold', 'italic', 'underline', '|',
+                        'bulletedList', 'numberedList', '|',
+                        'link', 'blockQuote', '|', 'undo', 'redo']
+            },
+            language: 'vi'
+        };
+
+        // Schedule description editor
+        const scheduleDescEl = document.querySelector('#ck-schedule-desc');
+        if (scheduleDescEl) {
+            ClassicEditor.create(scheduleDescEl, {
+                ...ckConfig,
+                placeholder: 'Nhập mô tả lịch trình...'
+            }).catch(err => console.error('CKEditor Schedule:', err));
+        }
+
+        // Task description editor (quick-add form)
+        const taskDescEl = document.querySelector('#ck-task-desc');
+        if (taskDescEl) {
+            ClassicEditor.create(taskDescEl, {
+                ...ckConfig,
+                placeholder: 'Nhập mô tả task...'
+            }).catch(err => console.error('CKEditor Task:', err));
+        }
+    </script>
 }

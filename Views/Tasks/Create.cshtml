@@ -1,0 +1,237 @@
+@model schedule.Models.TaskItem
+@using schedule.Helpers
+@using schedule.Models
+
+@{
+    ViewData["Title"] = "Tạo Task Mới";
+}
+
+<div class="page-heading">
+    <div>
+        <h1>Tạo Task Mới</h1>
+        <p class="text-muted mb-0">Tạo công việc/nhiệm vụ mới gắn liền với danh mục lịch trình (category) phù hợp.</p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
+</div>
+
+@if (TempData["TaskError"] != null)
+{
+    <div class="alert alert-danger shadow-sm">@TempData["TaskError"]</div>
+}
+
+<div class="form-card mb-4 bg-white p-4 rounded-4 shadow-sm">
+    <form asp-action="Create" method="post" id="createTaskForm">
+        <input type="hidden" name="returnUrl" value="tasks-list" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="row g-3">
+            <!-- Title -->
+            <div class="col-md-8">
+                <label asp-for="Title" class="form-label fw-bold">Tiêu đề task</label>
+                <input asp-for="Title" class="form-control" placeholder="Nhập tiêu đề nhiệm vụ..." required maxlength="160" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <!-- Deadline -->
+            <div class="col-md-4">
+                <label asp-for="Deadline" class="form-label fw-bold">Hạn chót (Deadline)</label>
+                <input asp-for="Deadline" type="datetime-local" id="Deadline" value="@Model.Deadline.ToString("yyyy-MM-ddTHH:mm")" class="form-control" required />
+                <span asp-validation-for="Deadline" class="text-danger"></span>
+            </div>
+
+            <!-- Schedule / Category Dropdown -->
+            <div class="col-12">
+                <label for="ScheduleItemId" class="form-label fw-bold">Thuộc Lịch trình (Category)</label>
+                <select id="ScheduleItemId" name="ScheduleItemId" class="form-select select-schedule-dropdown" required>
+                    <option value="">-- Chọn lịch trình phù hợp với Deadline --</option>
+                    @if (ViewBag.Schedules != null)
+                    {
+                        foreach (var s in (IEnumerable<schedule.Models.ScheduleItem>)ViewBag.Schedules)
+                        {
+                            <option value="@s.Id" 
+                                    data-start="@s.StartTime.ToString("yyyy-MM-dd")" 
+                                    data-end="@s.EndTime.ToString("yyyy-MM-dd")">
+                                @s.Title (@s.StartTime.ToString("dd/MM/yyyy") - @s.EndTime.ToString("dd/MM/yyyy"))
+                            </option>
+                        }
+                    }
+                </select>
+                <div class="form-text text-info" id="filterStatusText">Vui lòng chọn Deadline để hệ thống tự động gợi ý danh mục lịch trình diễn ra trong ngày đó.</div>
+                <span asp-validation-for="ScheduleItemId" class="text-danger"></span>
+            </div>
+
+            <!-- Status -->
+            <div class="col-md-4">
+                <label asp-for="Status" class="form-label fw-bold">Trạng thái</label>
+                <select asp-for="Status" class="form-select">
+                    <option value="@TaskItemStatus.NotStarted">@TaskDisplayHelper.StatusText(TaskItemStatus.NotStarted)</option>
+                    <option value="@TaskItemStatus.InProgress">@TaskDisplayHelper.StatusText(TaskItemStatus.InProgress)</option>
+                    <option value="@TaskItemStatus.Completed">@TaskDisplayHelper.StatusText(TaskItemStatus.Completed)</option>
+                    <option value="@TaskItemStatus.Overdue">@TaskDisplayHelper.StatusText(TaskItemStatus.Overdue)</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <!-- Priority -->
+            <div class="col-md-4">
+                <label asp-for="Priority" class="form-label fw-bold">Mức độ ưu tiên</label>
+                <select asp-for="Priority" class="form-select task-priority-select">
+                    <option value="@TaskPriorityLevel.Low" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Low)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Low)</option>
+                    <option value="@TaskPriorityLevel.Medium" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Medium)" selected>@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Medium)</option>
+                    <option value="@TaskPriorityLevel.High" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.High)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.High)</option>
+                    <option value="@TaskPriorityLevel.Urgent" data-color="@TaskDisplayHelper.PriorityColor(TaskPriorityLevel.Urgent)">@TaskDisplayHelper.PriorityText(TaskPriorityLevel.Urgent)</option>
+                </select>
+                <span asp-validation-for="Priority" class="text-danger"></span>
+            </div>
+
+            <!-- Color picker -->
+            <div class="col-md-4">
+                <label asp-for="Color" class="form-label fw-bold">Màu hiển thị</label>
+                <input asp-for="Color" type="color" class="form-control form-control-color task-color-input w-100" />
+                <span asp-validation-for="Color" class="text-danger"></span>
+            </div>
+
+            <!-- Attachment URL -->
+            <div class="col-12">
+                <label asp-for="AttachmentUrl" class="form-label fw-bold">Link đính kèm</label>
+                <input asp-for="AttachmentUrl" class="form-control" placeholder="https://..." maxlength="700" />
+                <span asp-validation-for="AttachmentUrl" class="text-danger"></span>
+            </div>
+
+            <!-- Description -->
+            <div class="col-12">
+                <label asp-for="Description" class="form-label fw-bold">Mô tả chi tiết</label>
+                <textarea asp-for="Description" id="ck-task-desc" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4 shadow-sm">Lưu Task</button>
+            <a class="btn btn-outline-secondary px-4 shadow-sm" asp-action="Index">Hủy</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize CKEditor
+            const taskDescEl = document.querySelector('#ck-task-desc');
+            if (taskDescEl) {
+                ClassicEditor.create(taskDescEl, {
+                    toolbar: {
+                        items: ['heading', '|', 'bold', 'italic', 'underline', '|',
+                                'bulletedList', 'numberedList', '|',
+                                'link', 'blockQuote', '|', 'undo', 'redo']
+                    },
+                    language: 'vi',
+                    placeholder: 'Nhập mô tả task...'
+                }).catch(err => console.error('CKEditor Task:', err));
+            }
+
+            // Sync color input on priority change
+            const prioritySelect = document.querySelector('.task-priority-select');
+            const colorInput = document.querySelector('.task-color-input');
+            if (prioritySelect && colorInput) {
+                prioritySelect.addEventListener('change', () => {
+                    const option = prioritySelect.options[prioritySelect.selectedIndex];
+                    const color = option?.dataset?.color;
+                    if (color) {
+                        colorInput.value = color;
+                    }
+                });
+            }
+
+            // Date-based Category Dropdown Filtering
+            const deadlineInput = document.getElementById('Deadline');
+            const scheduleSelect = document.getElementById('ScheduleItemId');
+            const filterStatusText = document.getElementById('filterStatusText');
+
+            function filterSchedules() {
+                const deadlineValue = deadlineInput.value;
+                if (!deadlineValue) {
+                    // Show all options if deadline is empty
+                    for (let i = 0; i < scheduleSelect.options.length; i++) {
+                        scheduleSelect.options[i].hidden = false;
+                        scheduleSelect.options[i].disabled = false;
+                    }
+                    filterStatusText.innerText = "Vui lòng chọn Deadline để hệ thống tự động gợi ý danh mục lịch trình diễn ra trong ngày đó.";
+                    filterStatusText.className = "form-text text-info";
+                    return;
+                }
+
+                // Get date part (yyyy-MM-dd)
+                const selectedDateStr = deadlineValue.substring(0, 10);
+                const selectedDate = new Date(selectedDateStr);
+
+                let matchCount = 0;
+                const currentlySelectedVal = scheduleSelect.value;
+                let isCurrentSelectedStillVisible = false;
+
+                // Loop options (skipping the placeholder first option)
+                for (let i = 1; i < scheduleSelect.options.length; i++) {
+                    const option = scheduleSelect.options[i];
+                    const startStr = option.dataset.start;
+                    const endStr = option.dataset.end;
+
+                    if (startStr && endStr) {
+                        const startDate = new Date(startStr);
+                        const endDate = new Date(endStr);
+
+                        // Check if deadline date falls within schedule start/end bounds
+                        if (selectedDate >= startDate && selectedDate <= endDate) {
+                            option.hidden = false;
+                            option.disabled = false;
+                            matchCount++;
+                            if (option.value === currentlySelectedVal) {
+                                isCurrentSelectedStillVisible = true;
+                            }
+                        } else {
+                            option.hidden = true;
+                            option.disabled = true;
+                        }
+                    }
+                }
+
+                if (matchCount > 0) {
+                    const vietnameseDate = selectedDateStr.split('-').reverse().join('/');
+                    filterStatusText.innerText = `Tìm thấy ${matchCount} lịch trình (category) diễn ra vào ngày ${vietnameseDate}.`;
+                    filterStatusText.className = "form-text text-success fw-semibold mt-1";
+
+                    // Auto-select the first visible option if the previous selection is filtered out
+                    if (!isCurrentSelectedStillVisible) {
+                        for (let i = 1; i < scheduleSelect.options.length; i++) {
+                            const option = scheduleSelect.options[i];
+                            if (!option.hidden) {
+                                scheduleSelect.value = option.value;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    const vietnameseDate = selectedDateStr.split('-').reverse().join('/');
+                    filterStatusText.innerText = `Cảnh báo: Không tìm thấy lịch trình (category) nào diễn ra vào ngày ${vietnameseDate}. Bạn nên tạo lịch trình cho ngày này trước.`;
+                    filterStatusText.className = "form-text text-danger fw-semibold mt-1";
+
+                    // Fallback: show all options to prevent blocking user completely
+                    for (let i = 1; i < scheduleSelect.options.length; i++) {
+                        scheduleSelect.options[i].hidden = false;
+                        scheduleSelect.options[i].disabled = false;
+                    }
+                }
+            }
+
+            // Bind listeners
+            deadlineInput.addEventListener('change', filterSchedules);
+            deadlineInput.addEventListener('keyup', filterSchedules);
+
+            // Execute on load if initialized
+            if (deadlineInput.value) {
+                filterSchedules();
+            }
+        });
+    </script>
+}
